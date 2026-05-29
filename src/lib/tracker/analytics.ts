@@ -26,6 +26,8 @@ export type Analytics = {
   daysRemaining: number;
   endDate: string;
   isCompleted: boolean;
+  notStarted: boolean;
+  daysUntilStart: number;
 
   totalEarnings: number;
   totalExpenses: number;
@@ -46,9 +48,46 @@ export type Analytics = {
 
   daysOfRunway: number; // net / dailyTarget
   requiredDailyToRecover: number; // for remaining days
+  projectedFinalNet: number;
+  paceVsTargetPct: number;
+
+  currentStreak: number;
+  bestStreak: number;
+  loggedDays: number;
+
   todaysEntry?: DailyEntry;
   missingToday: boolean;
 };
+
+function computeStreaks(entries: DailyEntry[]): { current: number; best: number } {
+  if (entries.length === 0) return { current: 0, best: 0 };
+  const dates = new Set(entries.map((e) => e.date));
+  const sorted = [...dates].sort();
+  let best = 0;
+  let run = 0;
+  let prev: string | null = null;
+  for (const d of sorted) {
+    run = prev && daysBetween(prev, d) === 1 ? run + 1 : 1;
+    if (run > best) best = run;
+    prev = d;
+  }
+  const today = todayISO();
+  let cursor = today;
+  if (!dates.has(cursor)) {
+    const y = new Date(today + "T00:00:00");
+    y.setDate(y.getDate() - 1);
+    cursor = y.toISOString().slice(0, 10);
+    if (!dates.has(cursor)) return { current: 0, best };
+  }
+  let current = 0;
+  while (dates.has(cursor)) {
+    current++;
+    const d = new Date(cursor + "T00:00:00");
+    d.setDate(d.getDate() - 1);
+    cursor = d.toISOString().slice(0, 10);
+  }
+  return { current, best };
+}
 
 export function computeAnalytics(
   entries: DailyEntry[],
@@ -59,6 +98,8 @@ export function computeAnalytics(
   const today = todayISO();
 
   const elapsedRaw = daysBetween(settings.startDate, today) + 1;
+  const notStarted = elapsedRaw <= 0;
+  const daysUntilStart = notStarted ? Math.abs(elapsedRaw) + 1 : 0;
   const daysElapsed = Math.max(0, elapsedRaw);
   const currentDay = Math.min(Math.max(daysElapsed, 1), totalDays);
   const daysRemaining = Math.max(totalDays - daysElapsed, 0);
@@ -72,26 +113,31 @@ export function computeAnalytics(
   const totalExpenses = entries.reduce((s, e) => s + entryTotalExpenses(e), 0);
   const netProfit = totalEarnings - totalExpenses;
 
-  const expectedAmount = currentDay * target;
+  const expectedAmount = notStarted ? 0 : currentDay * target;
   const difference = netProfit - expectedAmount;
-  const aheadDays = difference > 0 ? difference / target : 0;
-  const behindDays = difference < 0 ? Math.abs(difference) / target : 0;
+  const aheadDays = difference > 0 && target > 0 ? difference / target : 0;
+  const behindDays = difference < 0 && target > 0 ? Math.abs(difference) / target : 0;
 
   const goalTotal = totalDays * target;
   const remainingToGoal = Math.max(goalTotal - netProfit, 0);
-  const progressPct = Math.min(100, (netProfit / goalTotal) * 100);
+  const progressPct = goalTotal > 0 ? Math.min(100, Math.max(0, (netProfit / goalTotal) * 100)) : 0;
 
-  const entriesCount = entries.length || 1;
-  const avgDailyEarnings = totalEarnings / entriesCount;
-  const avgDailyExpenses = totalExpenses / entriesCount;
-  const avgDailyNet = netProfit / entriesCount;
+  const loggedDays = entries.length;
+  const denom = loggedDays || 1;
+  const avgDailyEarnings = totalEarnings / denom;
+  const avgDailyExpenses = totalExpenses / denom;
+  const avgDailyNet = netProfit / denom;
 
   const daysOfRunway = target > 0 ? netProfit / target : 0;
   const requiredDailyToRecover =
     daysRemaining > 0 ? remainingToGoal / daysRemaining : 0;
+  const projectedFinalNet = loggedDays > 0 ? avgDailyNet * totalDays : 0;
+  const paceVsTargetPct = target > 0 ? (avgDailyNet / target) * 100 : 0;
+
+  const { current: currentStreak, best: bestStreak } = computeStreaks(entries);
 
   const todaysEntry = entries.find((e) => e.date === today);
-  const missingToday = !todaysEntry && !isCompleted;
+  const missingToday = !todaysEntry && !isCompleted && !notStarted;
 
   return {
     currentDay,
