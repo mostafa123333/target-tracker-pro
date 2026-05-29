@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
   Wallet,
@@ -12,6 +12,9 @@ import {
   Sparkles,
   Plus,
   AlertCircle,
+  Flame,
+  Rocket,
+  Clock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -20,8 +23,9 @@ import { OnboardingDialog } from "@/components/tracker/OnboardingDialog";
 import { DailyEntryDialog } from "@/components/tracker/DailyEntryDialog";
 import { StatCard } from "@/components/tracker/StatCard";
 import { EarningsLine, ExpectedVsActual } from "@/components/tracker/Charts";
-import { computeAnalytics, formatEGP } from "@/lib/tracker/analytics";
+import { computeAnalytics, entryNet, entryTotalExpenses, formatEGP, todayISO } from "@/lib/tracker/analytics";
 import type { DailyEntry } from "@/lib/tracker/types";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -54,6 +58,27 @@ function Dashboard() {
     [entries, settings],
   );
 
+  const openAddToday = () => {
+    setEditing(analytics?.todaysEntry ?? null);
+    setEntryOpen(true);
+  };
+
+  // Keyboard shortcut: N to add today
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (entryOpen) return;
+      const t = e.target as HTMLElement | null;
+      if (t && /^(INPUT|TEXTAREA|SELECT)$/i.test(t.tagName)) return;
+      if (e.key === "n" || e.key === "N") {
+        e.preventDefault();
+        openAddToday();
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [analytics?.todaysEntry, entryOpen]);
+
   if (!hydrated) return <div className="h-40 animate-pulse rounded-2xl bg-muted/40" />;
 
   if (!settings) {
@@ -71,7 +96,12 @@ function Dashboard() {
   if (!analytics) return null;
 
   const a = analytics;
-  const aheadTone = a.difference >= 0 ? "success" : "destructive";
+  const ahead = a.difference >= 0;
+  const aheadTone = ahead ? "success" : "destructive";
+
+  const last7 = [...entries]
+    .sort((x, y) => (x.date < y.date ? 1 : -1))
+    .slice(0, 7);
 
   return (
     <div className="space-y-6">
@@ -82,33 +112,32 @@ function Dashboard() {
           <div className="space-y-2">
             <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
               <Sparkles className="h-3.5 w-3.5" />
-              Day {Math.min(a.daysElapsed, settings.totalDays)} of {settings.totalDays}
+              {a.notStarted
+                ? `Starts in ${a.daysUntilStart} day${a.daysUntilStart === 1 ? "" : "s"}`
+                : `Day ${Math.min(a.daysElapsed, settings.totalDays)} of ${settings.totalDays}`}
             </div>
             <h1 className="text-3xl font-bold tracking-tight md:text-4xl">
-              {a.isCompleted ? (
+              {a.notStarted ? (
+                <>Get ready to <span className="gradient-text">launch</span></>
+              ) : a.isCompleted ? (
                 <span className="gradient-text">Challenge Completed</span>
-              ) : a.difference >= 0 ? (
+              ) : ahead ? (
                 <>You're <span className="gradient-text">ahead</span> by {formatEGP(a.difference)}</>
               ) : (
                 <>You're behind by <span className="text-destructive">{formatEGP(Math.abs(a.difference))}</span></>
               )}
             </h1>
             <p className="max-w-md text-sm text-muted-foreground">
-              {a.difference >= 0
+              {a.notStarted
+                ? `Challenge begins ${settings.startDate}. You can pre-log earnings any time.`
+                : ahead
                 ? `That's about ${a.aheadDays.toFixed(1)} days ahead of schedule. Keep the momentum.`
-                : `That's about ${a.behindDays.toFixed(1)} days behind. You need ${formatEGP(a.requiredDailyToRecover)} per day for ${a.daysRemaining} days to recover.`}
+                : `That's about ${a.behindDays.toFixed(1)} days behind. You need ${formatEGP(a.requiredDailyToRecover)}/day for ${a.daysRemaining} days to recover.`}
             </p>
           </div>
 
           <div className="flex flex-col items-end gap-3">
-            <Button
-              size="lg"
-              className="glow-primary"
-              onClick={() => {
-                setEditing(a.todaysEntry ?? null);
-                setEntryOpen(true);
-              }}
-            >
+            <Button size="lg" className="glow-primary" onClick={openAddToday}>
               <Plus className="mr-1.5 h-4 w-4" />
               {a.todaysEntry ? "Edit today" : "Add today"}
             </Button>
@@ -116,6 +145,12 @@ function Dashboard() {
               <div className="inline-flex items-center gap-1.5 text-xs text-[color:var(--warning)]">
                 <AlertCircle className="h-3.5 w-3.5" />
                 Today not logged yet
+              </div>
+            )}
+            {a.currentStreak > 0 && (
+              <div className="inline-flex items-center gap-1.5 rounded-full bg-[color:var(--warning)]/10 px-3 py-1 text-xs font-medium text-[color:var(--warning)]">
+                <Flame className="h-3.5 w-3.5" />
+                {a.currentStreak}-day streak
               </div>
             )}
           </div>
@@ -139,10 +174,10 @@ function Dashboard() {
 
         <StatCard label="Expected so far" value={formatEGP(a.expectedAmount)} icon={CalendarCheck} />
         <StatCard
-          label={a.difference >= 0 ? "Ahead by" : "Behind by"}
+          label={ahead ? "Ahead by" : "Behind by"}
           value={formatEGP(Math.abs(a.difference))}
-          hint={a.difference >= 0 ? `≈ ${a.aheadDays.toFixed(1)} days` : `≈ ${a.behindDays.toFixed(1)} days`}
-          icon={a.difference >= 0 ? TrendingUp : TrendingDown}
+          hint={ahead ? `≈ ${a.aheadDays.toFixed(1)} days` : `≈ ${a.behindDays.toFixed(1)} days`}
+          icon={ahead ? TrendingUp : TrendingDown}
           tone={aheadTone}
         />
         <StatCard
@@ -156,6 +191,37 @@ function Dashboard() {
           value={`${a.daysOfRunway.toFixed(1)} days`}
           hint="At current daily target"
           icon={Coins}
+        />
+      </section>
+
+      {/* Pace & streak row */}
+      <section className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <StatCard
+          label="Current streak"
+          value={`${a.currentStreak} ${a.currentStreak === 1 ? "day" : "days"}`}
+          hint={`Best: ${a.bestStreak}`}
+          icon={Flame}
+          tone={a.currentStreak > 0 ? "warning" : "default"}
+        />
+        <StatCard
+          label="Projected total"
+          value={formatEGP(a.projectedFinalNet)}
+          hint={`At ${a.paceVsTargetPct.toFixed(0)}% of target pace`}
+          icon={Rocket}
+          tone={a.projectedFinalNet >= a.goalTotal ? "success" : "destructive"}
+        />
+        <StatCard
+          label="Avg daily net"
+          value={formatEGP(a.avgDailyNet)}
+          hint={`Over ${a.loggedDays} logged days`}
+          icon={TrendingUp}
+          tone="primary"
+        />
+        <StatCard
+          label="Required/day"
+          value={a.daysRemaining > 0 ? formatEGP(a.requiredDailyToRecover) : "—"}
+          hint={a.daysRemaining > 0 ? "To hit the goal" : "Challenge ended"}
+          icon={Clock}
         />
       </section>
 
@@ -177,11 +243,73 @@ function Dashboard() {
         </div>
       </section>
 
-      <section className="grid gap-3 sm:grid-cols-3">
-        <StatCard label="Avg daily earnings" value={formatEGP(a.avgDailyEarnings)} />
-        <StatCard label="Avg daily expenses" value={formatEGP(a.avgDailyExpenses)} />
-        <StatCard label="Avg daily net" value={formatEGP(a.avgDailyNet)} tone="primary" />
+      {/* Last 7 days */}
+      <section className="glass-card p-5">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-base font-semibold">Last 7 logged days</h2>
+          <span className="text-xs text-muted-foreground">Tap to edit</span>
+        </div>
+        {last7.length === 0 ? (
+          <div className="grid place-items-center rounded-xl border border-dashed border-border/60 py-10 text-sm text-muted-foreground">
+            No entries yet — add your first day to see it here.
+          </div>
+        ) : (
+          <ul className="divide-y divide-border/60">
+            {last7.map((e) => {
+              const net = entryNet(e);
+              const exp = entryTotalExpenses(e);
+              const hit = net >= settings.dailyTarget;
+              const isToday = e.date === todayISO();
+              return (
+                <li key={e.id}>
+                  <button
+                    onClick={() => {
+                      setEditing(e);
+                      setEntryOpen(true);
+                    }}
+                    className="flex w-full items-center justify-between gap-3 py-3 text-left transition-colors hover:bg-muted/30"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div
+                        className={cn(
+                          "h-2 w-2 rounded-full",
+                          hit ? "bg-[color:var(--success)]" : "bg-destructive",
+                        )}
+                      />
+                      <div>
+                        <div className="text-sm font-medium">
+                          {e.date}
+                          {isToday && (
+                            <span className="ml-2 rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-primary">
+                              Today
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {formatEGP(e.earnings)} earned · {formatEGP(exp)} spent
+                        </div>
+                      </div>
+                    </div>
+                    <div className={cn("stat-number text-sm md:text-base", hit ? "text-[color:var(--success)]" : "text-destructive")}>
+                      {net >= 0 ? "+" : ""}
+                      {formatEGP(net)}
+                    </div>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
       </section>
+
+      {/* Mobile FAB */}
+      <button
+        onClick={openAddToday}
+        aria-label="Add today"
+        className="fixed bottom-20 right-4 z-30 grid h-14 w-14 place-items-center rounded-full bg-primary text-primary-foreground shadow-[0_10px_40px_-8px_oklch(0.78_0.18_152_/_0.6)] transition-transform hover:scale-105 active:scale-95 md:hidden"
+      >
+        <Plus className="h-6 w-6" />
+      </button>
 
       <DailyEntryDialog
         open={entryOpen}
@@ -197,3 +325,4 @@ function Dashboard() {
     </div>
   );
 }
+
