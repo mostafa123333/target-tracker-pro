@@ -1,0 +1,11 @@
+[build]
+  command = "bun run build"
+  publish = "dist/client"
+
+[build.environment]
+  BASE_PATH = "/"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
