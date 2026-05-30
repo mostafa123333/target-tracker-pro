@@ -15,7 +15,14 @@ export default defineConfig({
     server: { entry: "server" },
     // Ship as a static SPA — no server functions are used (localStorage only),
     // so we render a single shell and hydrate client-side. Works on any static host.
-    spa: { enabled: true },
+    spa: {
+      enabled: true,
+      maskPath: "/",
+      prerender: {
+        // Static hosts need a real index.html at the publish root.
+        outputPath: "/index",
+      },
+    },
   },
   vite: {
     base: basePath,
