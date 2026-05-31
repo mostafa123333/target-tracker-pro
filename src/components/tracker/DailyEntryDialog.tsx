@@ -18,8 +18,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Plus, Trash2 } from "lucide-react";
-import type { DailyEntry, Expense } from "@/lib/tracker/types";
-import { entryNet, entryTotalExpenses, todayISO, formatEGP } from "@/lib/tracker/analytics";
+import type { Category, DailyEntry, Expense } from "@/lib/tracker/types";
+import {
+  entryDeductibleExpenses,
+  entryNet,
+  entryNonDeductibleExpenses,
+  entryTotalExpenses,
+  formatEGP,
+  makeCategoryMap,
+  todayISO,
+} from "@/lib/tracker/analytics";
 
 function rid() {
   return Math.random().toString(36).slice(2, 10);
@@ -29,8 +37,8 @@ type Props = {
   open: boolean;
   onOpenChange: (o: boolean) => void;
   initial?: DailyEntry | null;
-  categories: string[];
-  onAddCategory: (name: string) => void;
+  categories: Category[];
+  onAddCategory: (name: string, deductsFromTarget?: boolean) => void;
   onSave: (entry: DailyEntry) => void;
 };
 
@@ -48,6 +56,8 @@ export function DailyEntryDialog({
   const [notes, setNotes] = useState(initial?.notes ?? "");
   const [newCategory, setNewCategory] = useState("");
 
+  const catMap = useMemo(() => makeCategoryMap(categories), [categories]);
+
   useEffect(() => {
     if (open) {
       setDate(initial?.date ?? todayISO());
@@ -58,16 +68,21 @@ export function DailyEntryDialog({
     }
   }, [open, initial]);
 
-  const totalExp = useMemo(
-    () => expenses.reduce((s, e) => s + (Number(e.amount) || 0), 0),
-    [expenses],
-  );
-  const net = (Number(earnings) || 0) - totalExp;
+  const draftEntry: DailyEntry = {
+    id: initial?.id ?? "draft",
+    date,
+    earnings: Number(earnings) || 0,
+    expenses,
+  };
+  const totalExp = entryTotalExpenses(draftEntry);
+  const deductible = entryDeductibleExpenses(draftEntry, catMap);
+  const nonDeductible = entryNonDeductibleExpenses(draftEntry, catMap);
+  const net = entryNet(draftEntry, catMap);
 
   function addExpense() {
     setExpenses((prev) => [
       ...prev,
-      { id: rid(), category: categories[0] ?? "Other", amount: 0 },
+      { id: rid(), category: categories[0]?.name ?? "Other", amount: 0 },
     ]);
   }
 
@@ -82,7 +97,7 @@ export function DailyEntryDialog({
   function handleAddCategory() {
     const v = newCategory.trim();
     if (!v) return;
-    onAddCategory(v);
+    onAddCategory(v, true);
     setNewCategory("");
   }
 
@@ -138,43 +153,61 @@ export function DailyEntryDialog({
                   No expenses yet
                 </p>
               )}
-              {expenses.map((exp) => (
-                <div key={exp.id} className="flex items-center gap-2">
-                  <Select
-                    value={exp.category}
-                    onValueChange={(v) => updateExpense(exp.id, { category: v })}
-                  >
-                    <SelectTrigger className="flex-1">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {categories.map((c) => (
-                        <SelectItem key={c} value={c}>
-                          {c}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Input
-                    type="number"
-                    inputMode="decimal"
-                    className="w-28"
-                    placeholder="0"
-                    value={exp.amount || ""}
-                    onChange={(e) =>
-                      updateExpense(exp.id, { amount: Number(e.target.value) || 0 })
-                    }
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => removeExpense(exp.id)}
-                  >
-                    <Trash2 className="h-4 w-4 text-destructive" />
-                  </Button>
-                </div>
-              ))}
+              {expenses.map((exp) => {
+                const cat = catMap.get(exp.category);
+                const deducts = cat ? cat.deductsFromTarget !== false : true;
+                return (
+                  <div key={exp.id} className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <Select
+                        value={exp.category}
+                        onValueChange={(v) => updateExpense(exp.id, { category: v })}
+                      >
+                        <SelectTrigger className="flex-1">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {categories.map((c) => (
+                            <SelectItem key={c.name} value={c.name}>
+                              <span className="flex items-center gap-2">
+                                {c.name}
+                                {!c.deductsFromTarget && (
+                                  <span className="rounded-full bg-primary/15 px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-primary">
+                                    no target
+                                  </span>
+                                )}
+                              </span>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Input
+                        type="number"
+                        inputMode="decimal"
+                        className="w-28"
+                        placeholder="0"
+                        value={exp.amount || ""}
+                        onChange={(e) =>
+                          updateExpense(exp.id, { amount: Number(e.target.value) || 0 })
+                        }
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => removeExpense(exp.id)}
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </div>
+                    {!deducts && (
+                      <p className="pl-1 text-[11px] text-muted-foreground">
+                        Doesn&apos;t reduce target net
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
             </div>
 
             <div className="flex items-center gap-2 pt-1">
@@ -206,16 +239,25 @@ export function DailyEntryDialog({
             />
           </div>
 
-          <div className="flex items-center justify-between rounded-lg bg-muted/40 px-3 py-2 text-sm">
-            <span className="text-muted-foreground">Net</span>
-            <span
-              className={
-                "stat-number text-base " +
-                (net >= 0 ? "text-[color:var(--success)]" : "text-destructive")
-              }
-            >
-              {formatEGP(net)}
-            </span>
+          <div className="space-y-1 rounded-lg bg-muted/40 px-3 py-2 text-sm">
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">Target net</span>
+              <span
+                className={
+                  "stat-number text-base " +
+                  (net >= 0 ? "text-[color:var(--success)]" : "text-destructive")
+                }
+              >
+                {formatEGP(net)}
+              </span>
+            </div>
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <span>
+                {formatEGP(deductible)} deducted
+                {nonDeductible > 0 && ` · ${formatEGP(nonDeductible)} excluded`}
+              </span>
+              <span>Total spent {formatEGP(totalExp)}</span>
+            </div>
           </div>
         </div>
 
