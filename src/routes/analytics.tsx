@@ -35,7 +35,7 @@ function AnalyticsPage() {
       for (const x of e.expenses)
         byCat.set(x.category, (byCat.get(x.category) ?? 0) + (x.amount || 0));
     const topCat = [...byCat.entries()].sort((a, b) => b[1] - a[1])[0];
-    const nets = entries.map(entryNet);
+    const nets = entries.map((e) => entryNet(e));
     const positiveDays = nets.filter((n) => n > 0).length;
     const negativeDays = nets.filter((n) => n < 0).length;
     const bestNet = Math.max(...nets);
