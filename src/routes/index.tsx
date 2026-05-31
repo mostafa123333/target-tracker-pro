@@ -54,9 +54,14 @@ function Dashboard() {
   const [editing, setEditing] = useState<DailyEntry | null>(null);
 
   const analytics = useMemo(
-    () => (settings ? computeAnalytics(entries, settings) : null),
-    [entries, settings],
+    () => (settings ? computeAnalytics(entries, settings, categories) : null),
+    [entries, settings, categories],
   );
+  const catMap = useMemo(() => {
+    const m = new Map<string, typeof categories[number]>();
+    for (const c of categories) m.set(c.name, c);
+    return m;
+  }, [categories]);
 
   const openAddToday = () => {
     setEditing(analytics?.todaysEntry ?? null);
@@ -256,7 +261,7 @@ function Dashboard() {
         ) : (
           <ul className="divide-y divide-border/60">
             {last7.map((e) => {
-              const net = entryNet(e);
+              const net = entryNet(e, catMap);
               const exp = entryTotalExpenses(e);
               const hit = net >= settings.dailyTarget;
               const isToday = e.date === todayISO();
