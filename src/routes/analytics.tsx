@@ -18,7 +18,7 @@ export const Route = createFileRoute("/analytics")({
 });
 
 function AnalyticsPage() {
-  const { hydrated, settings, entries, updateSettings } = useTracker();
+  const { hydrated, settings, entries, categories, updateSettings } = useTracker();
 
   const computed = useMemo(() => {
     if (!entries.length) return null;
@@ -45,7 +45,7 @@ function AnalyticsPage() {
   if (!hydrated) return <div className="h-40 animate-pulse rounded-2xl bg-muted/40" />;
   if (!settings) return <OnboardingDialog open onComplete={updateSettings} />;
 
-  const a = computeAnalytics(entries, settings);
+  const a = computeAnalytics(entries, settings, categories);
 
   return (
     <div className="space-y-6">

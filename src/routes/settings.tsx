@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Download, Upload, RotateCcw, Trash2, Plus, Target as TargetIcon } from "lucide-react";
+import { Download, Upload, RotateCcw, Trash2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -308,8 +308,6 @@ function SettingsPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* unused icon import guard */}
-      <TargetIcon className="hidden" />
     </div>
   );
 }
