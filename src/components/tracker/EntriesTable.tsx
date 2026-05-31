@@ -93,7 +93,7 @@ export function EntriesTable({ entries, settings, categories = [], onEdit, onDel
       return sortDir === "asc" ? cmp : -cmp;
     });
     return r;
-  }, [entries, q, filter, sortKey, sortDir, settings.dailyTarget]);
+  }, [entries, q, filter, sortKey, sortDir, settings.dailyTarget, catMap]);
 
   function toggleSort(k: SortKey) {
     if (k === sortKey) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
