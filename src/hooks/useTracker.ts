@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import type { DailyEntry, TrackerSettings } from "@/lib/tracker/types";
+import type { Category, DailyEntry, TrackerSettings } from "@/lib/tracker/types";
 import {
   loadAll,
   saveCategories,
@@ -12,7 +12,7 @@ import {
 export function useTracker() {
   const [settings, setSettings] = useState<TrackerSettings | null>(null);
   const [entries, setEntries] = useState<DailyEntry[]>([]);
-  const [categories, setCategories] = useState<string[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
@@ -46,12 +46,23 @@ export function useTracker() {
     });
   }, []);
 
-  const addCategory = useCallback((name: string) => {
-    const v = name.trim();
-    if (!v) return;
+  const addCategory = useCallback(
+    (name: string, deductsFromTarget = true, budget?: number) => {
+      const v = name.trim();
+      if (!v) return;
+      setCategories((prev) => {
+        if (prev.some((c) => c.name.toLowerCase() === v.toLowerCase())) return prev;
+        const next: Category[] = [...prev, { name: v, deductsFromTarget, budget }];
+        saveCategories(next);
+        return next;
+      });
+    },
+    [],
+  );
+
+  const updateCategory = useCallback((name: string, patch: Partial<Category>) => {
     setCategories((prev) => {
-      if (prev.includes(v)) return prev;
-      const next = [...prev, v];
+      const next = prev.map((c) => (c.name === name ? { ...c, ...patch } : c));
       saveCategories(next);
       return next;
     });
@@ -59,7 +70,7 @@ export function useTracker() {
 
   const removeCategory = useCallback((name: string) => {
     setCategories((prev) => {
-      const next = prev.filter((c) => c !== name);
+      const next = prev.filter((c) => c.name !== name);
       saveCategories(next);
       return next;
     });
@@ -88,6 +99,7 @@ export function useTracker() {
     upsertEntry,
     deleteEntry,
     addCategory,
+    updateCategory,
     removeCategory,
     resetAll,
     restoreFromJson,

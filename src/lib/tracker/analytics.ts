@@ -1,11 +1,48 @@
-import type { DailyEntry, TrackerSettings } from "./types";
+import type { Category, DailyEntry, TrackerSettings } from "./types";
+
+export function makeCategoryMap(categories: Category[] = []): Map<string, Category> {
+  const m = new Map<string, Category>();
+  for (const c of categories) m.set(c.name, c);
+  return m;
+}
+
+/** True if a given expense category counts against the target. Unknown
+ *  categories default to deductible (legacy behaviour). */
+function isDeductible(catName: string, map?: Map<string, Category>): boolean {
+  if (!map) return true;
+  const c = map.get(catName);
+  if (!c) return true;
+  return c.deductsFromTarget !== false;
+}
 
 export function entryTotalExpenses(e: DailyEntry): number {
   return e.expenses.reduce((s, x) => s + (Number(x.amount) || 0), 0);
 }
 
-export function entryNet(e: DailyEntry): number {
-  return (Number(e.earnings) || 0) - entryTotalExpenses(e);
+/** Expenses that reduce the daily target (deductible categories only). */
+export function entryDeductibleExpenses(
+  e: DailyEntry,
+  map?: Map<string, Category>,
+): number {
+  return e.expenses.reduce(
+    (s, x) => s + (isDeductible(x.category, map) ? Number(x.amount) || 0 : 0),
+    0,
+  );
+}
+
+export function entryNonDeductibleExpenses(
+  e: DailyEntry,
+  map?: Map<string, Category>,
+): number {
+  return e.expenses.reduce(
+    (s, x) => s + (!isDeductible(x.category, map) ? Number(x.amount) || 0 : 0),
+    0,
+  );
+}
+
+/** Net amount counted toward the target. By default all expenses are deductible. */
+export function entryNet(e: DailyEntry, map?: Map<string, Category>): number {
+  return (Number(e.earnings) || 0) - entryDeductibleExpenses(e, map);
 }
 
 export function todayISO(): string {
@@ -20,9 +57,18 @@ export function daysBetween(startISO: string, endISO: string): number {
   return Math.floor((b.getTime() - a.getTime()) / 86_400_000);
 }
 
+export type CategoryStat = {
+  name: string;
+  deductsFromTarget: boolean;
+  budget?: number;
+  spent: number;
+  remaining?: number;
+  pct?: number;
+};
+
 export type Analytics = {
-  currentDay: number; // 1..totalDays (clamped)
-  daysElapsed: number; // can exceed totalDays
+  currentDay: number;
+  daysElapsed: number;
   daysRemaining: number;
   endDate: string;
   isCompleted: boolean;
@@ -30,13 +76,15 @@ export type Analytics = {
   daysUntilStart: number;
 
   totalEarnings: number;
-  totalExpenses: number;
-  netProfit: number;
+  totalExpenses: number; // ALL expenses
+  deductibleExpenses: number;
+  nonDeductibleExpenses: number;
+  netProfit: number; // earnings - deductibleExpenses (target-affecting)
 
   expectedAmount: number;
-  difference: number; // net - expected
-  aheadDays: number; // positive if ahead
-  behindDays: number; // positive if behind
+  difference: number;
+  aheadDays: number;
+  behindDays: number;
 
   goalTotal: number;
   remainingToGoal: number;
@@ -46,8 +94,8 @@ export type Analytics = {
   avgDailyExpenses: number;
   avgDailyNet: number;
 
-  daysOfRunway: number; // net / dailyTarget
-  requiredDailyToRecover: number; // for remaining days
+  daysOfRunway: number;
+  requiredDailyToRecover: number;
   projectedFinalNet: number;
   paceVsTargetPct: number;
 
@@ -57,6 +105,8 @@ export type Analytics = {
 
   todaysEntry?: DailyEntry;
   missingToday: boolean;
+
+  categoryStats: CategoryStat[];
 };
 
 function computeStreaks(entries: DailyEntry[]): { current: number; best: number } {
@@ -92,7 +142,9 @@ function computeStreaks(entries: DailyEntry[]): { current: number; best: number 
 export function computeAnalytics(
   entries: DailyEntry[],
   settings: TrackerSettings,
+  categories: Category[] = [],
 ): Analytics {
+  const catMap = makeCategoryMap(categories);
   const totalDays = settings.totalDays;
   const target = settings.dailyTarget;
   const today = todayISO();
@@ -111,7 +163,12 @@ export function computeAnalytics(
 
   const totalEarnings = entries.reduce((s, e) => s + (Number(e.earnings) || 0), 0);
   const totalExpenses = entries.reduce((s, e) => s + entryTotalExpenses(e), 0);
-  const netProfit = totalEarnings - totalExpenses;
+  const deductibleExpenses = entries.reduce(
+    (s, e) => s + entryDeductibleExpenses(e, catMap),
+    0,
+  );
+  const nonDeductibleExpenses = totalExpenses - deductibleExpenses;
+  const netProfit = totalEarnings - deductibleExpenses;
 
   const expectedAmount = notStarted ? 0 : currentDay * target;
   const difference = netProfit - expectedAmount;
@@ -139,6 +196,28 @@ export function computeAnalytics(
   const todaysEntry = entries.find((e) => e.date === today);
   const missingToday = !todaysEntry && !isCompleted && !notStarted;
 
+  // Spend by category
+  const spentByCat = new Map<string, number>();
+  for (const e of entries) {
+    for (const x of e.expenses) {
+      spentByCat.set(x.category, (spentByCat.get(x.category) ?? 0) + (Number(x.amount) || 0));
+    }
+  }
+  const categoryStats: CategoryStat[] = categories.map((c) => {
+    const spent = spentByCat.get(c.name) ?? 0;
+    const hasBudget = typeof c.budget === "number" && c.budget > 0;
+    return {
+      name: c.name,
+      deductsFromTarget: c.deductsFromTarget,
+      budget: hasBudget ? c.budget : undefined,
+      spent,
+      remaining: hasBudget ? Math.max((c.budget as number) - spent, 0) : undefined,
+      pct: hasBudget
+        ? Math.min(100, Math.max(0, (spent / (c.budget as number)) * 100))
+        : undefined,
+    };
+  });
+
   return {
     currentDay,
     daysElapsed,
@@ -149,6 +228,8 @@ export function computeAnalytics(
     daysUntilStart,
     totalEarnings,
     totalExpenses,
+    deductibleExpenses,
+    nonDeductibleExpenses,
     netProfit,
     expectedAmount,
     difference,
@@ -169,6 +250,7 @@ export function computeAnalytics(
     loggedDays,
     todaysEntry,
     missingToday,
+    categoryStats,
   };
 }
 
@@ -180,8 +262,9 @@ export function formatEGP(n: number): string {
 export function entryStatus(
   e: DailyEntry,
   target: number,
+  map?: Map<string, Category>,
 ): "ahead" | "behind" | "ontrack" {
-  const net = entryNet(e);
+  const net = entryNet(e, map);
   if (net >= target * 1.05) return "ahead";
   if (net < target * 0.95) return "behind";
   return "ontrack";
