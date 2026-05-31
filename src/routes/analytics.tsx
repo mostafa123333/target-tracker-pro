@@ -18,7 +18,7 @@ export const Route = createFileRoute("/analytics")({
 });
 
 function AnalyticsPage() {
-  const { hydrated, settings, entries, updateSettings } = useTracker();
+  const { hydrated, settings, entries, categories, updateSettings } = useTracker();
 
   const computed = useMemo(() => {
     if (!entries.length) return null;
@@ -35,7 +35,7 @@ function AnalyticsPage() {
       for (const x of e.expenses)
         byCat.set(x.category, (byCat.get(x.category) ?? 0) + (x.amount || 0));
     const topCat = [...byCat.entries()].sort((a, b) => b[1] - a[1])[0];
-    const nets = entries.map(entryNet);
+    const nets = entries.map((e) => entryNet(e));
     const positiveDays = nets.filter((n) => n > 0).length;
     const negativeDays = nets.filter((n) => n < 0).length;
     const bestNet = Math.max(...nets);
@@ -45,7 +45,7 @@ function AnalyticsPage() {
   if (!hydrated) return <div className="h-40 animate-pulse rounded-2xl bg-muted/40" />;
   if (!settings) return <OnboardingDialog open onComplete={updateSettings} />;
 
-  const a = computeAnalytics(entries, settings);
+  const a = computeAnalytics(entries, settings, categories);
 
   return (
     <div className="space-y-6">

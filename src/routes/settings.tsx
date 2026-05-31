@@ -1,11 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Download, Upload, RotateCcw, Trash2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
+import { Progress } from "@/components/ui/progress";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,6 +20,7 @@ import {
 import { useTracker } from "@/hooks/useTracker";
 import { OnboardingDialog } from "@/components/tracker/OnboardingDialog";
 import { exportBackup } from "@/lib/tracker/storage";
+import { computeAnalytics, formatEGP } from "@/lib/tracker/analytics";
 
 export const Route = createFileRoute("/settings")({
   head: () => ({
@@ -34,9 +36,11 @@ function SettingsPage() {
   const {
     hydrated,
     settings,
+    entries,
     categories,
     updateSettings,
     addCategory,
+    updateCategory,
     removeCategory,
     resetAll,
     restoreFromJson,
@@ -45,9 +49,16 @@ function SettingsPage() {
   const fileRef = useRef<HTMLInputElement>(null);
   const [confirmReset, setConfirmReset] = useState(false);
   const [newCat, setNewCat] = useState("");
+  const [newDeducts, setNewDeducts] = useState(true);
+  const [newBudget, setNewBudget] = useState<string>("");
   const [target, setTarget] = useState<number>(settings?.dailyTarget ?? 220);
   const [totalDays, setTotalDays] = useState<number>(settings?.totalDays ?? 90);
   const [startDate, setStartDate] = useState<string>(settings?.startDate ?? "");
+
+  const analytics = useMemo(
+    () => (settings ? computeAnalytics(entries, settings, categories) : null),
+    [entries, settings, categories],
+  );
 
   if (!hydrated) return <div className="h-40 animate-pulse rounded-2xl bg-muted/40" />;
   if (!settings) return <OnboardingDialog open onComplete={updateSettings} />;
@@ -86,6 +97,16 @@ function SettingsPage() {
     toast.success("Goal updated");
   }
 
+  function handleAddCat() {
+    const v = newCat.trim();
+    if (!v) return;
+    const budget = Number(newBudget) > 0 ? Number(newBudget) : undefined;
+    addCategory(v, newDeducts, budget);
+    setNewCat("");
+    setNewBudget("");
+    setNewDeducts(true);
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -115,46 +136,127 @@ function SettingsPage() {
       </section>
 
       <section className="glass-card p-5">
-        <h2 className="mb-4 text-base font-semibold">Expense categories</h2>
-        <div className="mb-3 flex flex-wrap gap-2">
+        <div className="mb-4 flex items-center justify-between">
+          <div>
+            <h2 className="text-base font-semibold">Expense categories</h2>
+            <p className="text-xs text-muted-foreground">
+              Toggle whether a category subtracts from the daily target. Add a budget to
+              track progress for non-target categories (e.g. Savings).
+            </p>
+          </div>
+        </div>
+
+        <div className="mb-4 space-y-2">
           {categories.length === 0 && (
             <p className="text-sm text-muted-foreground">No categories yet.</p>
           )}
-          {categories.map((c) => (
-            <Badge
-              key={c}
-              className="group cursor-pointer gap-1 border border-border bg-muted/40 px-3 py-1 text-foreground hover:bg-destructive/15"
-              onClick={() => removeCategory(c)}
-            >
-              {c}
-              <Trash2 className="h-3 w-3 opacity-0 transition-opacity group-hover:opacity-100" />
-            </Badge>
-          ))}
+          {categories.map((c) => {
+            const stat = analytics?.categoryStats.find((s) => s.name === c.name);
+            return (
+              <div
+                key={c.name}
+                className="rounded-xl border border-border/60 bg-muted/20 p-3"
+              >
+                <div className="flex flex-wrap items-center gap-3">
+                  <div className="min-w-[120px] flex-1">
+                    <div className="text-sm font-medium">{c.name}</div>
+                    <div className="text-[11px] uppercase tracking-wider text-muted-foreground">
+                      {c.deductsFromTarget ? "Deducts from target" : "Excluded from target"}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor={`d-${c.name}`} className="text-xs text-muted-foreground">
+                      Deducts
+                    </Label>
+                    <Switch
+                      id={`d-${c.name}`}
+                      checked={c.deductsFromTarget}
+                      onCheckedChange={(v) => updateCategory(c.name, { deductsFromTarget: v })}
+                    />
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor={`b-${c.name}`} className="text-xs text-muted-foreground">
+                      Budget
+                    </Label>
+                    <Input
+                      id={`b-${c.name}`}
+                      type="number"
+                      placeholder="—"
+                      className="h-8 w-24"
+                      value={c.budget ?? ""}
+                      onChange={(e) => {
+                        const n = Number(e.target.value);
+                        updateCategory(c.name, {
+                          budget: n > 0 ? n : undefined,
+                        });
+                      }}
+                    />
+                  </div>
+
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => removeCategory(c.name)}
+                    aria-label={`Remove ${c.name}`}
+                  >
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
+                </div>
+
+                {stat?.budget !== undefined && (
+                  <div className="mt-3">
+                    <div className="mb-1 flex items-center justify-between text-xs text-muted-foreground">
+                      <span>
+                        {formatEGP(stat.spent)} of {formatEGP(stat.budget)}
+                      </span>
+                      <span className="stat-number text-foreground">
+                        {(stat.pct ?? 0).toFixed(0)}% · {formatEGP(stat.remaining ?? 0)} left
+                      </span>
+                    </div>
+                    <Progress value={stat.pct ?? 0} className="h-1.5" />
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
-        <div className="flex gap-2">
-          <Input
-            placeholder="Add a category"
-            value={newCat}
-            onChange={(e) => setNewCat(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                if (newCat.trim()) {
-                  addCategory(newCat);
-                  setNewCat("");
+
+        <div className="grid gap-2 rounded-xl border border-dashed border-border/60 p-3">
+          <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            Add a category
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Input
+              placeholder="Name"
+              value={newCat}
+              className="min-w-[140px] flex-1"
+              onChange={(e) => setNewCat(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  handleAddCat();
                 }
-              }
-            }}
-          />
-          <Button
-            onClick={() => {
-              if (!newCat.trim()) return;
-              addCategory(newCat);
-              setNewCat("");
-            }}
-          >
-            <Plus className="mr-1 h-4 w-4" /> Add
-          </Button>
+              }}
+            />
+            <Input
+              type="number"
+              placeholder="Budget (optional)"
+              className="w-40"
+              value={newBudget}
+              onChange={(e) => setNewBudget(e.target.value)}
+            />
+            <div className="flex items-center gap-2">
+              <Switch id="new-deducts" checked={newDeducts} onCheckedChange={setNewDeducts} />
+              <Label htmlFor="new-deducts" className="text-xs text-muted-foreground">
+                Deducts from target
+              </Label>
+            </div>
+            <Button onClick={handleAddCat}>
+              <Plus className="mr-1 h-4 w-4" /> Add
+            </Button>
+          </div>
         </div>
       </section>
 
@@ -205,6 +307,7 @@ function SettingsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
     </div>
   );
 }

@@ -28,31 +28,40 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Pencil, Trash2, ArrowUpDown, Search } from "lucide-react";
-import type { DailyEntry, TrackerSettings } from "@/lib/tracker/types";
-import { entryNet, entryStatus, entryTotalExpenses, formatEGP } from "@/lib/tracker/analytics";
+import type { Category, DailyEntry, TrackerSettings } from "@/lib/tracker/types";
+import {
+  entryNet,
+  entryStatus,
+  entryTotalExpenses,
+  formatEGP,
+  makeCategoryMap,
+} from "@/lib/tracker/analytics";
 
 type Props = {
   entries: DailyEntry[];
   settings: TrackerSettings;
+  categories?: Category[];
   onEdit: (e: DailyEntry) => void;
   onDelete: (id: string) => void;
 };
 
 type SortKey = "date" | "earnings" | "expenses" | "net";
 
-export function EntriesTable({ entries, settings, onEdit, onDelete }: Props) {
+export function EntriesTable({ entries, settings, categories = [], onEdit, onDelete }: Props) {
   const [q, setQ] = useState("");
   const [filter, setFilter] = useState<"all" | "ahead" | "behind" | "ontrack">("all");
   const [sortKey, setSortKey] = useState<SortKey>("date");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [pending, setPending] = useState<DailyEntry | null>(null);
 
+  const catMap = useMemo(() => makeCategoryMap(categories), [categories]);
+
   const rows = useMemo(() => {
     let r = entries.map((e) => ({
       e,
-      net: entryNet(e),
+      net: entryNet(e, catMap),
       expenses: entryTotalExpenses(e),
-      status: entryStatus(e, settings.dailyTarget),
+      status: entryStatus(e, settings.dailyTarget, catMap),
     }));
     if (q.trim()) {
       const s = q.toLowerCase();
@@ -84,7 +93,7 @@ export function EntriesTable({ entries, settings, onEdit, onDelete }: Props) {
       return sortDir === "asc" ? cmp : -cmp;
     });
     return r;
-  }, [entries, q, filter, sortKey, sortDir, settings.dailyTarget]);
+  }, [entries, q, filter, sortKey, sortDir, settings.dailyTarget, catMap]);
 
   function toggleSort(k: SortKey) {
     if (k === sortKey) setSortDir((d) => (d === "asc" ? "desc" : "asc"));

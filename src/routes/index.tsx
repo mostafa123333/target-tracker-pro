@@ -54,9 +54,14 @@ function Dashboard() {
   const [editing, setEditing] = useState<DailyEntry | null>(null);
 
   const analytics = useMemo(
-    () => (settings ? computeAnalytics(entries, settings) : null),
-    [entries, settings],
+    () => (settings ? computeAnalytics(entries, settings, categories) : null),
+    [entries, settings, categories],
   );
+  const catMap = useMemo(() => {
+    const m = new Map<string, typeof categories[number]>();
+    for (const c of categories) m.set(c.name, c);
+    return m;
+  }, [categories]);
 
   const openAddToday = () => {
     setEditing(analytics?.todaysEntry ?? null);
@@ -243,6 +248,56 @@ function Dashboard() {
         </div>
       </section>
 
+      {/* Category budgets (non-deductible & budgeted) */}
+      {a.categoryStats.some((s) => s.budget !== undefined || !s.deductsFromTarget) && (
+        <section className="glass-card p-5">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-base font-semibold">Category goals</h2>
+            <span className="text-xs text-muted-foreground">
+              Tracked separately from your daily target
+            </span>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {a.categoryStats
+              .filter((s) => s.budget !== undefined || !s.deductsFromTarget)
+              .map((s) => (
+                <div
+                  key={s.name}
+                  className="rounded-xl border border-border/60 bg-muted/20 p-4"
+                >
+                  <div className="mb-1 flex items-center justify-between">
+                    <span className="text-sm font-medium">{s.name}</span>
+                    {!s.deductsFromTarget && (
+                      <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[10px] uppercase tracking-wider text-primary">
+                        no target
+                      </span>
+                    )}
+                  </div>
+                  {s.budget !== undefined ? (
+                    <>
+                      <div className="stat-number text-xl">
+                        {(s.pct ?? 0).toFixed(0)}%
+                      </div>
+                      <div className="mb-2 text-xs text-muted-foreground">
+                        {formatEGP(s.spent)} of {formatEGP(s.budget)} ·{" "}
+                        {formatEGP(s.remaining ?? 0)} left
+                      </div>
+                      <Progress value={s.pct ?? 0} className="h-1.5" />
+                    </>
+                  ) : (
+                    <>
+                      <div className="stat-number text-xl">{formatEGP(s.spent)}</div>
+                      <div className="text-xs text-muted-foreground">
+                        Set a budget in Settings to track progress
+                      </div>
+                    </>
+                  )}
+                </div>
+              ))}
+          </div>
+        </section>
+      )}
+
       {/* Last 7 days */}
       <section className="glass-card p-5">
         <div className="mb-4 flex items-center justify-between">
@@ -256,7 +311,7 @@ function Dashboard() {
         ) : (
           <ul className="divide-y divide-border/60">
             {last7.map((e) => {
-              const net = entryNet(e);
+              const net = entryNet(e, catMap);
               const exp = entryTotalExpenses(e);
               const hit = net >= settings.dailyTarget;
               const isToday = e.date === todayISO();
