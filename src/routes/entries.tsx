@@ -59,6 +59,7 @@ function EntriesPage() {
       <EntriesTable
         entries={entries}
         settings={settings}
+        categories={categories}
         onEdit={(e) => {
           setEditing(e);
           setOpen(true);
