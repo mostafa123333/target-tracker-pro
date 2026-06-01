@@ -251,25 +251,55 @@ function Dashboard() {
       {/* Motivational insights */}
       {a.motivationalTips.length > 0 && (
         <section className="glass-card p-5" dir="rtl">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-base font-semibold">نصائح وتحفيز</h2>
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <h2 className="text-base font-semibold">نصائح ذكية ليك</h2>
             {a.restDaysAvailable > 0 && (
               <span className="rounded-full bg-[color:var(--success)]/15 px-3 py-1 text-xs font-medium text-[color:var(--success)]">
                 {a.restDaysAvailable} يوم راحة متاح
               </span>
             )}
           </div>
-          <ul className="space-y-2 text-sm leading-relaxed">
-            {a.motivationalTips.map((t, i) => (
-              <li
-                key={i}
-                className="flex items-start gap-2 rounded-lg border border-border/60 bg-muted/20 px-3 py-2"
-              >
-                <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                <span>{t}</span>
-              </li>
-            ))}
-          </ul>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {a.motivationalTips.map((t, i) => {
+              const toneClass =
+                t.kind === "success"
+                  ? "border-[color:var(--success)]/40 bg-[color:var(--success)]/8"
+                  : t.kind === "warning"
+                    ? "border-[color:var(--warning)]/40 bg-[color:var(--warning)]/8"
+                    : t.kind === "danger"
+                      ? "border-destructive/40 bg-destructive/8"
+                      : "border-primary/30 bg-primary/8";
+              const titleClass =
+                t.kind === "success"
+                  ? "text-[color:var(--success)]"
+                  : t.kind === "warning"
+                    ? "text-[color:var(--warning)]"
+                    : t.kind === "danger"
+                      ? "text-destructive"
+                      : "text-primary";
+              return (
+                <div
+                  key={i}
+                  className={cn(
+                    "flex items-start gap-3 rounded-xl border px-3 py-2.5 text-sm leading-relaxed",
+                    toneClass,
+                  )}
+                >
+                  <span className="text-xl leading-none">{t.icon}</span>
+                  <div className="min-w-0 flex-1">
+                    <div className={cn("text-sm font-semibold", titleClass)}>
+                      {t.title}
+                    </div>
+                    {t.body && (
+                      <div className="mt-0.5 text-xs text-muted-foreground">
+                        {t.body}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </section>
       )}
 
