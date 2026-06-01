@@ -248,6 +248,31 @@ function Dashboard() {
         </div>
       </section>
 
+      {/* Motivational insights */}
+      {a.motivationalTips.length > 0 && (
+        <section className="glass-card p-5" dir="rtl">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-base font-semibold">نصائح وتحفيز</h2>
+            {a.restDaysAvailable > 0 && (
+              <span className="rounded-full bg-[color:var(--success)]/15 px-3 py-1 text-xs font-medium text-[color:var(--success)]">
+                {a.restDaysAvailable} يوم راحة متاح
+              </span>
+            )}
+          </div>
+          <ul className="space-y-2 text-sm leading-relaxed">
+            {a.motivationalTips.map((t, i) => (
+              <li
+                key={i}
+                className="flex items-start gap-2 rounded-lg border border-border/60 bg-muted/20 px-3 py-2"
+              >
+                <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                <span>{t}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       {/* Category budgets (non-deductible & budgeted) */}
       {a.categoryStats.some((s) => s.budget !== undefined || !s.deductsFromTarget) && (
         <section className="glass-card p-5">
@@ -269,7 +294,7 @@ function Dashboard() {
                     <span className="text-sm font-medium">{s.name}</span>
                     {!s.deductsFromTarget && (
                       <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[10px] uppercase tracking-wider text-primary">
-                        no target
+                        savings
                       </span>
                     )}
                   </div>
@@ -279,16 +304,26 @@ function Dashboard() {
                         {(s.pct ?? 0).toFixed(0)}%
                       </div>
                       <div className="mb-2 text-xs text-muted-foreground">
-                        {formatEGP(s.spent)} of {formatEGP(s.budget)} ·{" "}
+                        {formatEGP(s.balance)} of {formatEGP(s.budget)} ·{" "}
                         {formatEGP(s.remaining ?? 0)} left
                       </div>
                       <Progress value={s.pct ?? 0} className="h-1.5" />
+                      {(s.contributed > 0 || s.withdrawn > 0) && (
+                        <div className="mt-2 flex items-center justify-between text-[11px] text-muted-foreground">
+                          <span className="text-[color:var(--success)]">
+                            + {formatEGP(s.contributed)} added
+                          </span>
+                          <span className="text-destructive">
+                            − {formatEGP(s.withdrawn)} taken
+                          </span>
+                        </div>
+                      )}
                     </>
                   ) : (
                     <>
-                      <div className="stat-number text-xl">{formatEGP(s.spent)}</div>
+                      <div className="stat-number text-xl">{formatEGP(s.balance)}</div>
                       <div className="text-xs text-muted-foreground">
-                        Set a budget in Settings to track progress
+                        + {formatEGP(s.contributed)} · − {formatEGP(s.withdrawn)}
                       </div>
                     </>
                   )}
