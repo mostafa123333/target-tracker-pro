@@ -495,6 +495,10 @@ export function computeAnalytics(
     categoryStats,
     motivationalTips: tips,
     restDaysAvailable,
+    bestDay,
+    worstDay,
+    expenseRatio,
+    savingsRate,
   };
 }
 
