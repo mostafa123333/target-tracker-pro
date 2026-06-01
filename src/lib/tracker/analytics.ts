@@ -61,7 +61,14 @@ export type CategoryStat = {
   name: string;
   deductsFromTarget: boolean;
   budget?: number;
+  /** Net of contributions minus withdrawals (or raw spent for deductible cats). */
   spent: number;
+  /** Positive entries — money put into this category (savings deposit). */
+  contributed: number;
+  /** Absolute value of negative entries — money taken out. */
+  withdrawn: number;
+  /** contributed - withdrawn (== spent). Kept for clarity in UI. */
+  balance: number;
   remaining?: number;
   pct?: number;
 };
