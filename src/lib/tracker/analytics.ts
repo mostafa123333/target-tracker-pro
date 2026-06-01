@@ -73,6 +73,14 @@ export type CategoryStat = {
   pct?: number;
 };
 
+export type TipKind = "success" | "warning" | "danger" | "info";
+export type Tip = {
+  kind: TipKind;
+  icon: string; // emoji
+  title: string;
+  body?: string;
+};
+
 export type Analytics = {
   currentDay: number;
   daysElapsed: number;
@@ -114,8 +122,12 @@ export type Analytics = {
   missingToday: boolean;
 
   categoryStats: CategoryStat[];
-  motivationalTips: string[];
+  motivationalTips: Tip[];
   restDaysAvailable: number;
+  bestDay?: { date: string; net: number };
+  worstDay?: { date: string; net: number };
+  expenseRatio: number; // total expenses / total earnings
+  savingsRate: number; // non-deductible contributions / earnings
 };
 
 function computeStreaks(entries: DailyEntry[]): { current: number; best: number } {
@@ -238,61 +250,215 @@ export function computeAnalytics(
     };
   });
 
-  // Motivational tips (Arabic)
-  const tips: string[] = [];
+  // Best / worst day
+  let bestDay: { date: string; net: number } | undefined;
+  let worstDay: { date: string; net: number } | undefined;
+  for (const e of entries) {
+    const n = entryNet(e, catMap);
+    if (!bestDay || n > bestDay.net) bestDay = { date: e.date, net: n };
+    if (!worstDay || n < worstDay.net) worstDay = { date: e.date, net: n };
+  }
+
+  const expenseRatio = totalEarnings > 0 ? totalExpenses / totalEarnings : 0;
+  const totalSavingsContrib = categoryStats
+    .filter((s) => !s.deductsFromTarget)
+    .reduce((s, c) => s + c.contributed, 0);
+  const savingsRate = totalEarnings > 0 ? totalSavingsContrib / totalEarnings : 0;
+
+  // Smart motivational tips
+  const tips: Tip[] = [];
   const restDaysAvailable =
     target > 0 && difference > 0 ? Math.floor(difference / target) : 0;
 
   if (notStarted) {
-    tips.push(`التحدي هيبدأ بعد ${daysUntilStart} يوم — جهّز نفسك وابدأ بقوة 💪`);
+    tips.push({
+      kind: "info",
+      icon: "🚀",
+      title: `التحدي يبدأ بعد ${daysUntilStart} يوم`,
+      body: "تقدر تجهز كاتوجوريز المصروفات والادخار من دلوقتي.",
+    });
   } else if (isCompleted) {
     if (netProfit >= goalTotal) {
-      tips.push(`مبروك! وصلت للهدف وحققت ${formatEGP(netProfit)} 🎉`);
+      tips.push({
+        kind: "success",
+        icon: "🏆",
+        title: `مبروك! تخطّيت الهدف بـ ${formatEGP(netProfit - goalTotal)}`,
+        body: `إجمالي صافي: ${formatEGP(netProfit)} على مدار ${totalDays} يوم.`,
+      });
     } else {
-      tips.push(`خلصت التحدي بـ ${formatEGP(netProfit)} — جرب جولة تانية بهدف أعلى.`);
-    }
-  } else if (difference >= 0) {
-    if (restDaysAvailable >= 1) {
-      tips.push(
-        `انت متقدم بـ ${formatEGP(difference)} — يعني تقدر تاخد ${restDaysAvailable} يوم راحة من غير ما تقع عن التارجت 😎`,
-      );
-    } else {
-      tips.push(`فوق التارجت بـ ${formatEGP(difference)} — استمر بنفس الإيقاع 🔥`);
-    }
-    if (difference >= target) {
-      tips.push(
-        `الزيادة دي (${formatEGP(difference)}) لو حولتها لكاتوجري ادخار هتقربك من هدف الادخار بتاعك أسرع.`,
-      );
+      tips.push({
+        kind: "warning",
+        icon: "🎯",
+        title: `خلصت التحدي بـ ${formatEGP(netProfit)} (${progressPct.toFixed(0)}% من الهدف)`,
+        body: "ابدأ جولة جديدة بهدف يومي أنسب لمعدلك الحقيقي.",
+      });
     }
   } else {
-    const need = requiredDailyToRecover;
-    if (daysRemaining > 0) {
-      tips.push(
-        `محتاج تكسب ${formatEGP(need)} كل يوم للـ ${daysRemaining} يوم الجاي عشان تلحق الهدف.`,
-      );
-    }
-    if (avgDailyNet > 0 && need > avgDailyNet * 1.5) {
-      tips.push(`حاول تقلل المصروفات اللي بتخصم من التارجت، أو زوّد مصدر دخل صغير.`);
+    // === Pace ===
+    if (difference >= 0) {
+      if (restDaysAvailable >= 1) {
+        tips.push({
+          kind: "success",
+          icon: "😎",
+          title: `متقدم بـ ${formatEGP(difference)} — يساوي ${restDaysAvailable} يوم راحة`,
+          body: `حتى لو ما كسبتش حاجة لـ ${restDaysAvailable} يوم، لسه فوق الخط.`,
+        });
+      } else {
+        tips.push({
+          kind: "success",
+          icon: "🔥",
+          title: `فوق التارجت بـ ${formatEGP(difference)}`,
+          body: "ثبات الأداء ده هو اللي بيوصلك للهدف. كمّل.",
+        });
+      }
+      if (difference >= target * 2) {
+        tips.push({
+          kind: "info",
+          icon: "🏦",
+          title: `حوّل الزيادة لكاتوجري ادخار`,
+          body: `عندك ${formatEGP(difference)} فوق المطلوب — لو نقلت منها ${formatEGP(target)} لادخار، هتبني عادة بدل ما تتصرف.`,
+        });
+      }
     } else {
-      tips.push(`متخفش — كل يوم فوق المتوسط بيقرّبك خطوة من اللحاق 💪`);
+      const need = requiredDailyToRecover;
+      const gap = Math.abs(difference);
+      tips.push({
+        kind: "danger",
+        icon: "⚠️",
+        title: `متأخر بـ ${formatEGP(gap)} (≈ ${behindDays.toFixed(1)} يوم)`,
+        body:
+          daysRemaining > 0
+            ? `محتاج ${formatEGP(need)}/يوم للـ ${daysRemaining} يوم الجايين بدل ${formatEGP(target)}.`
+            : "خلص الوقت — راجع الهدف للجولة الجاية.",
+      });
+      if (avgDailyNet > 0 && need > avgDailyNet * 1.4 && daysRemaining > 0) {
+        const extra = need - avgDailyNet;
+        tips.push({
+          kind: "warning",
+          icon: "🧮",
+          title: "الفجوة كبيرة على معدلك الحالي",
+          body: `معدلك ${formatEGP(avgDailyNet)}/يوم، والمطلوب ${formatEGP(need)}. لازم تزود ${formatEGP(extra)} يوميًا أو تقلل مصروفاتك بنفس الرقم.`,
+        });
+      }
+    }
+
+    // === Projection ===
+    if (loggedDays >= 3) {
+      if (projectedFinalNet >= goalTotal) {
+        const surplus = projectedFinalNet - goalTotal;
+        tips.push({
+          kind: "success",
+          icon: "📈",
+          title: `لو كملت على نفس الإيقاع هتوصل لـ ${formatEGP(projectedFinalNet)}`,
+          body: `يعني ${formatEGP(surplus)} فوق الهدف.`,
+        });
+      } else {
+        const shortfall = goalTotal - projectedFinalNet;
+        tips.push({
+          kind: "warning",
+          icon: "📉",
+          title: `التوقع الحالي: ${formatEGP(projectedFinalNet)} (${paceVsTargetPct.toFixed(0)}% من السرعة)`,
+          body: `لو ما تغيّرش شيء هتقل عن الهدف بـ ${formatEGP(shortfall)}.`,
+        });
+      }
+    }
+
+    // === Expense ratio ===
+    if (totalEarnings > 0 && expenseRatio >= 0.5) {
+      tips.push({
+        kind: "warning",
+        icon: "💸",
+        title: `المصروفات بتاكل ${(expenseRatio * 100).toFixed(0)}% من دخلك`,
+        body: "ابص على أكبر كاتوجري مصاريف وشوف فيها بند تقدر تقلله.",
+      });
+    } else if (totalEarnings > 0 && expenseRatio > 0 && expenseRatio < 0.2 && loggedDays >= 3) {
+      tips.push({
+        kind: "success",
+        icon: "🧘",
+        title: `إنفاقك منضبط — ${(expenseRatio * 100).toFixed(0)}% بس من الدخل`,
+      });
     }
   }
 
-  if (currentStreak >= 3) {
-    tips.push(`سلسلة ${currentStreak} يوم متواصلة — متكسرش الـ streak! 🔥`);
+  // === Streak ===
+  if (currentStreak >= 7) {
+    tips.push({
+      kind: "success",
+      icon: "🔥",
+      title: `${currentStreak} يوم متواصلين — أسطورة`,
+      body: bestStreak > currentStreak ? `أفضل سلسلة ليك: ${bestStreak} يوم.` : "ده أطول streak ليك حتى الآن.",
+    });
+  } else if (currentStreak >= 3) {
+    tips.push({
+      kind: "info",
+      icon: "✨",
+      title: `سلسلة ${currentStreak} يوم — متكسرهاش`,
+    });
   } else if (missingToday) {
-    tips.push(`النهارده لسه متسجّلش — سجّل دخلك علشان ما تكسرش العادة.`);
+    tips.push({
+      kind: "warning",
+      icon: "📝",
+      title: "النهارده لسه متسجّلش",
+      body: "حتى لو الدخل صفر، سجّل اليوم عشان البيانات تفضل دقيقة.",
+    });
   }
 
-  // Savings encouragement
+  // === Best / worst day insight ===
+  if (loggedDays >= 5 && bestDay && worstDay && bestDay.date !== worstDay.date) {
+    if (bestDay.net > target * 2) {
+      tips.push({
+        kind: "info",
+        icon: "⭐",
+        title: `أفضل يوم: ${formatEGP(bestDay.net)} في ${bestDay.date}`,
+        body: "حاول تفتكر إيه اللي خلاه مميز وكرر الفورمولا دي.",
+      });
+    }
+    if (worstDay.net < 0) {
+      tips.push({
+        kind: "warning",
+        icon: "🚨",
+        title: `أسوأ يوم: ${formatEGP(worstDay.net)} في ${worstDay.date}`,
+        body: "راجع المصروفات في اليوم ده — في حاجة استثنائية ولا عادة محتاجة تتظبط؟",
+      });
+    }
+  }
+
+  // === Savings ===
+  if (savingsRate >= 0.1 && totalSavingsContrib > 0) {
+    tips.push({
+      kind: "success",
+      icon: "💰",
+      title: `بتدخر ${(savingsRate * 100).toFixed(0)}% من دخلك`,
+      body: `إجمالي ادخار: ${formatEGP(totalSavingsContrib)}.`,
+    });
+  }
   const savingsCats = categoryStats.filter((s) => !s.deductsFromTarget && s.budget);
   for (const s of savingsCats) {
     if (s.pct !== undefined && s.pct >= 100) {
-      tips.push(`وصلت لهدف "${s.name}" بالكامل ✅ — ممكن ترفع الهدف أو تبدأ هدف جديد.`);
+      tips.push({
+        kind: "success",
+        icon: "✅",
+        title: `وصلت لهدف "${s.name}" بالكامل`,
+        body: "ارفع الهدف أو ابدأ كاتوجري ادخار جديد.",
+      });
     } else if (s.pct !== undefined && s.pct >= 50) {
-      tips.push(`"${s.name}": وصلت لـ ${s.pct.toFixed(0)}% من الهدف، فاضل ${formatEGP(s.remaining ?? 0)}.`);
+      tips.push({
+        kind: "info",
+        icon: "🎯",
+        title: `"${s.name}": ${s.pct.toFixed(0)}% من الهدف`,
+        body: `فاضل ${formatEGP(s.remaining ?? 0)} للوصول لـ ${formatEGP(s.budget as number)}.`,
+      });
+    }
+    if (s.withdrawn > s.contributed * 0.5 && s.contributed > 0) {
+      tips.push({
+        kind: "warning",
+        icon: "⛔",
+        title: `بتسحب كتير من "${s.name}"`,
+        body: `سحبت ${formatEGP(s.withdrawn)} من ${formatEGP(s.contributed)} ادخرتهم. حاول تقلل السحب.`,
+      });
     }
   }
+
 
   return {
     currentDay,
