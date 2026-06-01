@@ -114,6 +114,8 @@ export type Analytics = {
   missingToday: boolean;
 
   categoryStats: CategoryStat[];
+  motivationalTips: string[];
+  restDaysAvailable: number;
 };
 
 function computeStreaks(entries: DailyEntry[]): { current: number; best: number } {
@@ -203,27 +205,94 @@ export function computeAnalytics(
   const todaysEntry = entries.find((e) => e.date === today);
   const missingToday = !todaysEntry && !isCompleted && !notStarted;
 
-  // Spend by category
-  const spentByCat = new Map<string, number>();
+  // Spend by category — track contributions (positive) vs withdrawals (negative)
+  const contribByCat = new Map<string, number>();
+  const withdrawByCat = new Map<string, number>();
   for (const e of entries) {
     for (const x of e.expenses) {
-      spentByCat.set(x.category, (spentByCat.get(x.category) ?? 0) + (Number(x.amount) || 0));
+      const v = Number(x.amount) || 0;
+      if (v >= 0) {
+        contribByCat.set(x.category, (contribByCat.get(x.category) ?? 0) + v);
+      } else {
+        withdrawByCat.set(x.category, (withdrawByCat.get(x.category) ?? 0) + Math.abs(v));
+      }
     }
   }
   const categoryStats: CategoryStat[] = categories.map((c) => {
-    const spent = spentByCat.get(c.name) ?? 0;
+    const contributed = contribByCat.get(c.name) ?? 0;
+    const withdrawn = withdrawByCat.get(c.name) ?? 0;
+    const balance = contributed - withdrawn;
     const hasBudget = typeof c.budget === "number" && c.budget > 0;
     return {
       name: c.name,
       deductsFromTarget: c.deductsFromTarget,
       budget: hasBudget ? c.budget : undefined,
-      spent,
-      remaining: hasBudget ? Math.max((c.budget as number) - spent, 0) : undefined,
+      spent: balance,
+      contributed,
+      withdrawn,
+      balance,
+      remaining: hasBudget ? Math.max((c.budget as number) - balance, 0) : undefined,
       pct: hasBudget
-        ? Math.min(100, Math.max(0, (spent / (c.budget as number)) * 100))
+        ? Math.min(100, Math.max(0, (balance / (c.budget as number)) * 100))
         : undefined,
     };
   });
+
+  // Motivational tips (Arabic)
+  const tips: string[] = [];
+  const restDaysAvailable =
+    target > 0 && difference > 0 ? Math.floor(difference / target) : 0;
+
+  if (notStarted) {
+    tips.push(`التحدي هيبدأ بعد ${daysUntilStart} يوم — جهّز نفسك وابدأ بقوة 💪`);
+  } else if (isCompleted) {
+    if (netProfit >= goalTotal) {
+      tips.push(`مبروك! وصلت للهدف وحققت ${formatEGP(netProfit)} 🎉`);
+    } else {
+      tips.push(`خلصت التحدي بـ ${formatEGP(netProfit)} — جرب جولة تانية بهدف أعلى.`);
+    }
+  } else if (difference >= 0) {
+    if (restDaysAvailable >= 1) {
+      tips.push(
+        `انت متقدم بـ ${formatEGP(difference)} — يعني تقدر تاخد ${restDaysAvailable} يوم راحة من غير ما تقع عن التارجت 😎`,
+      );
+    } else {
+      tips.push(`فوق التارجت بـ ${formatEGP(difference)} — استمر بنفس الإيقاع 🔥`);
+    }
+    if (difference >= target) {
+      tips.push(
+        `الزيادة دي (${formatEGP(difference)}) لو حولتها لكاتوجري ادخار هتقربك من هدف الادخار بتاعك أسرع.`,
+      );
+    }
+  } else {
+    const need = requiredDailyToRecover;
+    if (daysRemaining > 0) {
+      tips.push(
+        `محتاج تكسب ${formatEGP(need)} كل يوم للـ ${daysRemaining} يوم الجاي عشان تلحق الهدف.`,
+      );
+    }
+    if (avgDailyNet > 0 && need > avgDailyNet * 1.5) {
+      tips.push(`حاول تقلل المصروفات اللي بتخصم من التارجت، أو زوّد مصدر دخل صغير.`);
+    } else {
+      tips.push(`متخفش — كل يوم فوق المتوسط بيقرّبك خطوة من اللحاق 💪`);
+    }
+  }
+
+  if (currentStreak >= 3) {
+    tips.push(`سلسلة ${currentStreak} يوم متواصلة — متكسرش الـ streak! 🔥`);
+  } else if (missingToday) {
+    tips.push(`النهارده لسه متسجّلش — سجّل دخلك علشان ما تكسرش العادة.`);
+  }
+
+  // Savings encouragement
+  const savingsCats = categoryStats.filter((s) => !s.deductsFromTarget && s.budget);
+  for (const s of savingsCats) {
+    if (s.pct !== undefined && s.pct >= 100) {
+      tips.push(`وصلت لهدف "${s.name}" بالكامل ✅ — ممكن ترفع الهدف أو تبدأ هدف جديد.`);
+    } else if (s.pct !== undefined && s.pct >= 50) {
+      tips.push(`"${s.name}": وصلت لـ ${s.pct.toFixed(0)}% من الهدف، فاضل ${formatEGP(s.remaining ?? 0)}.`);
+    }
+  }
 
   return {
     currentDay,
