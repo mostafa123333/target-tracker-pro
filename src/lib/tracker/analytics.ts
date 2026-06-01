@@ -327,6 +327,8 @@ export function computeAnalytics(
     todaysEntry,
     missingToday,
     categoryStats,
+    motivationalTips: tips,
+    restDaysAvailable,
   };
 }
 
