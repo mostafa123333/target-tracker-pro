@@ -106,7 +106,7 @@ export function DailyEntryDialog({
       id: initial?.id ?? rid(),
       date,
       earnings: Number(earnings) || 0,
-      expenses: expenses.filter((e) => e.amount > 0 || e.category),
+      expenses: expenses.filter((e) => Number(e.amount) !== 0 && e.category),
       notes: notes.trim() || undefined,
     };
     onSave(entry);
@@ -200,10 +200,16 @@ export function DailyEntryDialog({
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
                     </div>
-                    {!deducts && (
+                    {!deducts ? (
                       <p className="pl-1 text-[11px] text-muted-foreground">
-                        Doesn&apos;t reduce target net
+                        Savings category — positive = deposit, negative = withdrawal
                       </p>
+                    ) : (
+                      exp.amount < 0 && (
+                        <p className="pl-1 text-[11px] text-muted-foreground">
+                          Negative amount (refund / reversal)
+                        </p>
+                      )
                     )}
                   </div>
                 );
