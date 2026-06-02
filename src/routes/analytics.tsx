@@ -22,6 +22,7 @@ function AnalyticsPage() {
 
   const computed = useMemo(() => {
     if (!entries.length) return null;
+    const catMap = makeCategoryMap(categories);
     let best = entries[0];
     let worst = entries[0];
     let mostExp = entries[0];
@@ -32,15 +33,19 @@ function AnalyticsPage() {
     }
     const byCat = new Map<string, number>();
     for (const e of entries)
-      for (const x of e.expenses)
-        byCat.set(x.category, (byCat.get(x.category) ?? 0) + (x.amount || 0));
+      for (const x of e.expenses) {
+        const c = catMap.get(x.category);
+        // Only count deductible categories as "spend"; skip savings deposits.
+        if (c && c.deductsFromTarget === false) continue;
+        byCat.set(x.category, (byCat.get(x.category) ?? 0) + (Number(x.amount) || 0));
+      }
     const topCat = [...byCat.entries()].sort((a, b) => b[1] - a[1])[0];
-    const nets = entries.map((e) => entryNet(e));
+    const nets = entries.map((e) => entryNet(e, catMap));
     const positiveDays = nets.filter((n) => n > 0).length;
     const negativeDays = nets.filter((n) => n < 0).length;
-    const bestNet = Math.max(...nets);
+    const bestNet = nets.length ? Math.max(...nets) : 0;
     return { best, worst, mostExp, topCat, positiveDays, negativeDays, bestNet };
-  }, [entries]);
+  }, [entries, categories]);
 
   if (!hydrated) return <div className="h-40 animate-pulse rounded-2xl bg-muted/40" />;
   if (!settings) return <OnboardingDialog open onComplete={updateSettings} />;
