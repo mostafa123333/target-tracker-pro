@@ -117,22 +117,25 @@ export function ExpensesBar({ entries }: { entries: DailyEntry[] }) {
 export function ExpectedVsActual({
   entries,
   settings,
+  categories = [],
 }: {
   entries: DailyEntry[];
   settings: TrackerSettings;
+  categories?: Category[];
 }) {
+  const catMap = useMemo(() => makeCategoryMap(categories), [categories]);
   const data = useMemo(() => {
     const sorted = [...entries].sort((a, b) => (a.date < b.date ? -1 : 1));
     let cumulative = 0;
     return sorted.map((e, i) => {
-      cumulative += entryNet(e);
+      cumulative += entryNet(e, catMap);
       return {
         date: fmtDay(e.date),
         actual: Math.round(cumulative),
         expected: (i + 1) * settings.dailyTarget,
       };
     });
-  }, [entries, settings.dailyTarget]);
+  }, [entries, settings.dailyTarget, catMap]);
 
   const t = tooltipStyle();
   if (data.length === 0) return <EmptyChart label="No data yet" />;
