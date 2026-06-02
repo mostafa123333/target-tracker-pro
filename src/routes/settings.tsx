@@ -25,7 +25,7 @@ import { computeAnalytics, formatEGP } from "@/lib/tracker/analytics";
 export const Route = createFileRoute("/settings")({
   head: () => ({
     meta: [
-      { title: "Settings — 90 Day Target Tracker" },
+      { title: "Settings — 105 Day Target Tracker" },
       { name: "description", content: "Manage your goal, categories, and data." },
     ],
   }),
@@ -52,7 +52,7 @@ function SettingsPage() {
   const [newDeducts, setNewDeducts] = useState(true);
   const [newBudget, setNewBudget] = useState<string>("");
   const [target, setTarget] = useState<number>(settings?.dailyTarget ?? 220);
-  const [totalDays, setTotalDays] = useState<number>(settings?.totalDays ?? 90);
+  const [totalDays, setTotalDays] = useState<number>(settings?.totalDays ?? 105);
   const [startDate, setStartDate] = useState<string>(settings?.startDate ?? "");
 
   const analytics = useMemo(
@@ -92,7 +92,7 @@ function SettingsPage() {
     updateSettings({
       startDate: startDate || settings!.startDate,
       dailyTarget: Number(target) || 220,
-      totalDays: Number(totalDays) || 90,
+      totalDays: Number(totalDays) || 105,
     });
     toast.success("Goal updated");
   }

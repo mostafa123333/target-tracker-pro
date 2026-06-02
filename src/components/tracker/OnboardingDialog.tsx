@@ -22,7 +22,7 @@ type Props = {
 export function OnboardingDialog({ open, initial, onComplete }: Props) {
   const [startDate, setStartDate] = useState(initial?.startDate ?? todayISO());
   const [target, setTarget] = useState<number>(initial?.dailyTarget ?? 220);
-  const [totalDays, setTotalDays] = useState<number>(initial?.totalDays ?? 90);
+  const [totalDays, setTotalDays] = useState<number>(initial?.totalDays ?? 105);
 
   useEffect(() => {
     if (initial) {
@@ -36,7 +36,7 @@ export function OnboardingDialog({ open, initial, onComplete }: Props) {
     <Dialog open={open}>
       <DialogContent className="sm:max-w-md [&>button.absolute]:hidden">
         <DialogHeader>
-          <DialogTitle className="text-xl">Start your 90-Day Challenge</DialogTitle>
+          <DialogTitle className="text-xl">Start your 105-Day Challenge</DialogTitle>
           <DialogDescription>
             Pick the day you started the challenge — we'll handle the rest.
           </DialogDescription>
@@ -88,7 +88,7 @@ export function OnboardingDialog({ open, initial, onComplete }: Props) {
               onComplete({
                 startDate,
                 dailyTarget: Number(target) || 220,
-                totalDays: Number(totalDays) || 90,
+                totalDays: Number(totalDays) || 105,
               })
             }
           >
