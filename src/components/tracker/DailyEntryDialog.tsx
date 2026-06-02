@@ -55,6 +55,8 @@ export function DailyEntryDialog({
   const [expenses, setExpenses] = useState<Expense[]>(initial?.expenses ?? []);
   const [notes, setNotes] = useState(initial?.notes ?? "");
   const [newCategory, setNewCategory] = useState("");
+  // Per-expense input buffer so users can type "-", "12.", etc. without losing chars.
+  const [amountDrafts, setAmountDrafts] = useState<Record<string, string>>({});
 
   const catMap = useMemo(() => makeCategoryMap(categories), [categories]);
 
@@ -65,6 +67,7 @@ export function DailyEntryDialog({
       setExpenses(initial?.expenses ?? []);
       setNotes(initial?.notes ?? "");
       setNewCategory("");
+      setAmountDrafts({});
     }
   }, [open, initial]);
 
