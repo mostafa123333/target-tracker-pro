@@ -56,8 +56,14 @@ function normalizeCategories(raw: unknown): Category[] {
 
 export function loadAll(): TrackerData {
   const rawCats = safeRead<unknown>(KEYS.categories, DEFAULT_CATEGORIES);
+  let settings = safeRead<TrackerSettings | null>(KEYS.settings, null);
+  // Migrate legacy 90-day setups to the new 105-day default.
+  if (settings && settings.totalDays === 90) {
+    settings = { ...settings, totalDays: 105 };
+    safeWrite(KEYS.settings, settings);
+  }
   return {
-    settings: safeRead<TrackerSettings | null>(KEYS.settings, null),
+    settings,
     entries: safeRead<DailyEntry[]>(KEYS.entries, []),
     categories: normalizeCategories(rawCats),
   };
