@@ -236,7 +236,7 @@ function Dashboard() {
             <h2 className="text-base font-semibold">Expected vs Actual</h2>
             <span className="text-xs text-muted-foreground">Cumulative net</span>
           </div>
-          <ExpectedVsActual entries={entries} settings={settings} />
+          <ExpectedVsActual entries={entries} settings={settings} categories={categories} />
         </div>
 
         <div className="glass-card p-5">
@@ -244,7 +244,7 @@ function Dashboard() {
             <h2 className="text-base font-semibold">Daily earnings</h2>
             <span className="text-xs text-muted-foreground">Last days</span>
           </div>
-          <EarningsLine entries={entries} />
+          <EarningsLine entries={entries} categories={categories} />
         </div>
       </section>
 
