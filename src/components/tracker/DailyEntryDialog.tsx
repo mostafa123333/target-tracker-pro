@@ -189,19 +189,21 @@ export function DailyEntryDialog({
                         inputMode="decimal"
                         className="w-28"
                         placeholder="0"
-                        value={exp.amount === 0 ? "" : String(exp.amount)}
+                        value={amountDrafts[exp.id] ?? (exp.amount === 0 ? "" : String(exp.amount))}
                         onChange={(e) => {
-                          const raw = e.target.value.replace(",", ".").trim();
-                          if (raw === "" || raw === "-") {
-                            updateExpense(exp.id, { amount: raw === "-" ? -0 : 0 });
-                            return;
-                          }
-                          // Allow partial decimals like "12." while typing.
-                          if (/^-?\d*\.?\d*$/.test(raw)) {
-                            const n = Number(raw);
-                            updateExpense(exp.id, { amount: Number.isFinite(n) ? n : 0 });
+                          const raw = e.target.value.replace(",", ".");
+                          if (raw === "" || /^-?\d*\.?\d*$/.test(raw)) {
+                            setAmountDrafts((d) => ({ ...d, [exp.id]: raw }));
+                            const n = raw === "" || raw === "-" || raw === "." || raw === "-." ? 0 : Number(raw);
+                            if (Number.isFinite(n)) updateExpense(exp.id, { amount: n });
                           }
                         }}
+                        onBlur={() =>
+                          setAmountDrafts((d) => {
+                            const { [exp.id]: _drop, ...rest } = d;
+                            return rest;
+                          })
+                        }
                       />
                       <Button
                         type="button"
