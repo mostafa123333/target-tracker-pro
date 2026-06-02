@@ -88,7 +88,7 @@ export function OnboardingDialog({ open, initial, onComplete }: Props) {
               onComplete({
                 startDate,
                 dailyTarget: Number(target) || 220,
-                totalDays: Number(totalDays) || 90,
+                totalDays: Number(totalDays) || 105,
               })
             }
           >
