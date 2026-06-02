@@ -92,7 +92,7 @@ function SettingsPage() {
     updateSettings({
       startDate: startDate || settings!.startDate,
       dailyTarget: Number(target) || 220,
-      totalDays: Number(totalDays) || 90,
+      totalDays: Number(totalDays) || 105,
     });
     toast.success("Goal updated");
   }
