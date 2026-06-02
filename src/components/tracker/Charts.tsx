@@ -45,7 +45,8 @@ function fmtDay(iso: string) {
   return iso.slice(5);
 }
 
-export function EarningsLine({ entries }: { entries: DailyEntry[] }) {
+export function EarningsLine({ entries, categories = [] }: { entries: DailyEntry[]; categories?: Category[] }) {
+  const catMap = useMemo(() => makeCategoryMap(categories), [categories]);
   const data = useMemo(
     () =>
       [...entries]
@@ -53,9 +54,9 @@ export function EarningsLine({ entries }: { entries: DailyEntry[] }) {
         .map((e) => ({
           date: fmtDay(e.date),
           earnings: e.earnings,
-          net: entryNet(e),
+          net: entryNet(e, catMap),
         })),
-    [entries],
+    [entries, catMap],
   );
 
   const t = tooltipStyle();
