@@ -52,7 +52,7 @@ function SettingsPage() {
   const [newDeducts, setNewDeducts] = useState(true);
   const [newBudget, setNewBudget] = useState<string>("");
   const [target, setTarget] = useState<number>(settings?.dailyTarget ?? 220);
-  const [totalDays, setTotalDays] = useState<number>(settings?.totalDays ?? 90);
+  const [totalDays, setTotalDays] = useState<number>(settings?.totalDays ?? 105);
   const [startDate, setStartDate] = useState<string>(settings?.startDate ?? "");
 
   const analytics = useMemo(
