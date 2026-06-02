@@ -10,7 +10,7 @@ import { Trophy, Frown, Flame, TrendingUp, TrendingDown, BarChart3 } from "lucid
 export const Route = createFileRoute("/analytics")({
   head: () => ({
     meta: [
-      { title: "Analytics — 90 Day Target Tracker" },
+      { title: "Analytics — 105 Day Target Tracker" },
       { name: "description", content: "Insights from your daily data." },
     ],
   }),
