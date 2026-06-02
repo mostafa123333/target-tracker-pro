@@ -36,7 +36,7 @@ export function OnboardingDialog({ open, initial, onComplete }: Props) {
     <Dialog open={open}>
       <DialogContent className="sm:max-w-md [&>button.absolute]:hidden">
         <DialogHeader>
-          <DialogTitle className="text-xl">Start your 90-Day Challenge</DialogTitle>
+          <DialogTitle className="text-xl">Start your 105-Day Challenge</DialogTitle>
           <DialogDescription>
             Pick the day you started the challenge — we'll handle the rest.
           </DialogDescription>
