@@ -25,7 +25,7 @@ import { computeAnalytics, formatEGP } from "@/lib/tracker/analytics";
 export const Route = createFileRoute("/settings")({
   head: () => ({
     meta: [
-      { title: "Settings — 90 Day Target Tracker" },
+      { title: "Settings — 105 Day Target Tracker" },
       { name: "description", content: "Manage your goal, categories, and data." },
     ],
   }),
