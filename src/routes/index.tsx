@@ -30,10 +30,10 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Dashboard — 90 Day Target Tracker" },
+      { title: "Dashboard — 105 Day Target Tracker" },
       {
         name: "description",
-        content: "Your live progress toward 220 EGP/day for 90 days.",
+        content: "Your live progress toward 220 EGP/day for 105 days.",
       },
     ],
   }),
