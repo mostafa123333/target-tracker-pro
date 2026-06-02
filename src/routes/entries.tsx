@@ -12,7 +12,7 @@ import type { DailyEntry } from "@/lib/tracker/types";
 export const Route = createFileRoute("/entries")({
   head: () => ({
     meta: [
-      { title: "Entries — 90 Day Target Tracker" },
+      { title: "Entries — Target Tracker" },
       { name: "description", content: "Every logged day, sortable and filterable." },
     ],
   }),
