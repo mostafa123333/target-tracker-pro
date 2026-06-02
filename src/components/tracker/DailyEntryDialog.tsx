@@ -182,14 +182,23 @@ export function DailyEntryDialog({
                         </SelectContent>
                       </Select>
                       <Input
-                        type="number"
+                        type="text"
                         inputMode="decimal"
                         className="w-28"
                         placeholder="0"
-                        value={exp.amount || ""}
-                        onChange={(e) =>
-                          updateExpense(exp.id, { amount: Number(e.target.value) || 0 })
-                        }
+                        value={exp.amount === 0 ? "" : String(exp.amount)}
+                        onChange={(e) => {
+                          const raw = e.target.value.replace(",", ".").trim();
+                          if (raw === "" || raw === "-") {
+                            updateExpense(exp.id, { amount: raw === "-" ? -0 : 0 });
+                            return;
+                          }
+                          // Allow partial decimals like "12." while typing.
+                          if (/^-?\d*\.?\d*$/.test(raw)) {
+                            const n = Number(raw);
+                            updateExpense(exp.id, { amount: Number.isFinite(n) ? n : 0 });
+                          }
+                        }}
                       />
                       <Button
                         type="button"
