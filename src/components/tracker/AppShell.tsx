@@ -21,7 +21,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <Target className="h-5 w-5" />
             </div>
             <div className="leading-tight">
-              <div className="text-sm font-semibold tracking-tight">90 Day Target</div>
+              <div className="text-sm font-semibold tracking-tight">Target Tracker</div>
               <div className="text-[11px] text-muted-foreground">Financial Tracker</div>
             </div>
           </Link>

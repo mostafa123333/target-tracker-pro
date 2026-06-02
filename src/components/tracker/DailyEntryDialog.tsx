@@ -55,6 +55,8 @@ export function DailyEntryDialog({
   const [expenses, setExpenses] = useState<Expense[]>(initial?.expenses ?? []);
   const [notes, setNotes] = useState(initial?.notes ?? "");
   const [newCategory, setNewCategory] = useState("");
+  // Per-expense input buffer so users can type "-", "12.", etc. without losing chars.
+  const [amountDrafts, setAmountDrafts] = useState<Record<string, string>>({});
 
   const catMap = useMemo(() => makeCategoryMap(categories), [categories]);
 
@@ -65,6 +67,7 @@ export function DailyEntryDialog({
       setExpenses(initial?.expenses ?? []);
       setNotes(initial?.notes ?? "");
       setNewCategory("");
+      setAmountDrafts({});
     }
   }, [open, initial]);
 
@@ -182,13 +185,24 @@ export function DailyEntryDialog({
                         </SelectContent>
                       </Select>
                       <Input
-                        type="number"
+                        type="text"
                         inputMode="decimal"
                         className="w-28"
                         placeholder="0"
-                        value={exp.amount || ""}
-                        onChange={(e) =>
-                          updateExpense(exp.id, { amount: Number(e.target.value) || 0 })
+                        value={amountDrafts[exp.id] ?? (exp.amount === 0 ? "" : String(exp.amount))}
+                        onChange={(e) => {
+                          const raw = e.target.value.replace(",", ".");
+                          if (raw === "" || /^-?\d*\.?\d*$/.test(raw)) {
+                            setAmountDrafts((d) => ({ ...d, [exp.id]: raw }));
+                            const n = raw === "" || raw === "-" || raw === "." || raw === "-." ? 0 : Number(raw);
+                            if (Number.isFinite(n)) updateExpense(exp.id, { amount: n });
+                          }
+                        }}
+                        onBlur={() =>
+                          setAmountDrafts((d) => {
+                            const { [exp.id]: _drop, ...rest } = d;
+                            return rest;
+                          })
                         }
                       />
                       <Button

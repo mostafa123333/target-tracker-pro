@@ -15,8 +15,8 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import type { DailyEntry, TrackerSettings } from "@/lib/tracker/types";
-import { entryNet, entryTotalExpenses } from "@/lib/tracker/analytics";
+import type { Category, DailyEntry, TrackerSettings } from "@/lib/tracker/types";
+import { entryNet, entryTotalExpenses, makeCategoryMap } from "@/lib/tracker/analytics";
 
 const COLORS = [
   "oklch(0.78 0.18 152)",
@@ -45,7 +45,8 @@ function fmtDay(iso: string) {
   return iso.slice(5);
 }
 
-export function EarningsLine({ entries }: { entries: DailyEntry[] }) {
+export function EarningsLine({ entries, categories = [] }: { entries: DailyEntry[]; categories?: Category[] }) {
+  const catMap = useMemo(() => makeCategoryMap(categories), [categories]);
   const data = useMemo(
     () =>
       [...entries]
@@ -53,9 +54,9 @@ export function EarningsLine({ entries }: { entries: DailyEntry[] }) {
         .map((e) => ({
           date: fmtDay(e.date),
           earnings: e.earnings,
-          net: entryNet(e),
+          net: entryNet(e, catMap),
         })),
-    [entries],
+    [entries, catMap],
   );
 
   const t = tooltipStyle();
@@ -116,22 +117,25 @@ export function ExpensesBar({ entries }: { entries: DailyEntry[] }) {
 export function ExpectedVsActual({
   entries,
   settings,
+  categories = [],
 }: {
   entries: DailyEntry[];
   settings: TrackerSettings;
+  categories?: Category[];
 }) {
+  const catMap = useMemo(() => makeCategoryMap(categories), [categories]);
   const data = useMemo(() => {
     const sorted = [...entries].sort((a, b) => (a.date < b.date ? -1 : 1));
     let cumulative = 0;
     return sorted.map((e, i) => {
-      cumulative += entryNet(e);
+      cumulative += entryNet(e, catMap);
       return {
         date: fmtDay(e.date),
         actual: Math.round(cumulative),
         expected: (i + 1) * settings.dailyTarget,
       };
     });
-  }, [entries, settings.dailyTarget]);
+  }, [entries, settings.dailyTarget, catMap]);
 
   const t = tooltipStyle();
   if (data.length === 0) return <EmptyChart label="No data yet" />;
