@@ -22,7 +22,7 @@ type Props = {
 export function OnboardingDialog({ open, initial, onComplete }: Props) {
   const [startDate, setStartDate] = useState(initial?.startDate ?? todayISO());
   const [target, setTarget] = useState<number>(initial?.dailyTarget ?? 220);
-  const [totalDays, setTotalDays] = useState<number>(initial?.totalDays ?? 90);
+  const [totalDays, setTotalDays] = useState<number>(initial?.totalDays ?? 105);
 
   useEffect(() => {
     if (initial) {
