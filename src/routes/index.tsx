@@ -23,7 +23,7 @@ import { OnboardingDialog } from "@/components/tracker/OnboardingDialog";
 import { DailyEntryDialog } from "@/components/tracker/DailyEntryDialog";
 import { StatCard } from "@/components/tracker/StatCard";
 import { EarningsLine, ExpectedVsActual } from "@/components/tracker/Charts";
-import { computeAnalytics, entryNet, entryTotalExpenses, formatEGP, todayISO } from "@/lib/tracker/analytics";
+import { computeAnalytics, entryNet, entryTargetNet, entryTotalExpenses, formatEGP, todayISO } from "@/lib/tracker/analytics";
 import type { DailyEntry } from "@/lib/tracker/types";
 import { cn } from "@/lib/utils";
 
