@@ -40,8 +40,15 @@ export function entryNonDeductibleExpenses(
   );
 }
 
-/** Net amount counted toward the target. By default all expenses are deductible. */
+/** Real net for the day: earnings minus ALL expenses (including savings/non-deductible).
+ *  This is what the user actually has left in pocket. */
 export function entryNet(e: DailyEntry, map?: Map<string, Category>): number {
+  return (Number(e.earnings) || 0) - entryTotalExpenses(e);
+}
+
+/** Amount that counts toward the daily target — earnings minus deductible expenses only.
+ *  Non-deductible categories (savings, etc.) do NOT reduce target progress. */
+export function entryTargetNet(e: DailyEntry, map?: Map<string, Category>): number {
   return (Number(e.earnings) || 0) - entryDeductibleExpenses(e, map);
 }
 
