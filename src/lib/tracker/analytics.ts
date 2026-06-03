@@ -220,7 +220,7 @@ export function computeAnalytics(
   const requiredDailyToRecover =
     daysRemaining > 0 ? remainingToGoal / daysRemaining : 0;
   const projectedFinalNet = loggedDays > 0 ? avgDailyTargetNet * totalDays : 0;
-  const paceVsTargetPct = target > 0 ? (avgDailyNet / target) * 100 : 0;
+  const paceVsTargetPct = target > 0 ? (avgDailyTargetNet / target) * 100 : 0;
 
   const { current: currentStreak, best: bestStreak } = computeStreaks(entries);
 
