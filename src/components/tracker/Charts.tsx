@@ -128,7 +128,7 @@ export function ExpectedVsActual({
     const sorted = [...entries].sort((a, b) => (a.date < b.date ? -1 : 1));
     let cumulative = 0;
     return sorted.map((e, i) => {
-      cumulative += entryNet(e, catMap);
+      cumulative += entryTargetNet(e, catMap);
       return {
         date: fmtDay(e.date),
         actual: Math.round(cumulative),
