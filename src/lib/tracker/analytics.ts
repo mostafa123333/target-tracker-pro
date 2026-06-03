@@ -523,7 +523,7 @@ export function entryStatus(
   target: number,
   map?: Map<string, Category>,
 ): "ahead" | "behind" | "ontrack" {
-  const net = entryNet(e, map);
+  const net = entryTargetNet(e, map);
   if (net >= target * 1.05) return "ahead";
   if (net < target * 0.95) return "behind";
   return "ontrack";
