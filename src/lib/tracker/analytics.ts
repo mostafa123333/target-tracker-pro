@@ -101,7 +101,8 @@ export type Analytics = {
   totalExpenses: number; // ALL expenses
   deductibleExpenses: number;
   nonDeductibleExpenses: number;
-  netProfit: number; // earnings - deductibleExpenses (target-affecting)
+  netProfit: number; // earnings - ALL expenses (real money in pocket)
+  targetProgress: number; // earnings - deductibleExpenses (counts toward goal)
 
   expectedAmount: number;
   difference: number;
