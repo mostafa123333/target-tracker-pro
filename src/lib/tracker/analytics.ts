@@ -197,27 +197,29 @@ export function computeAnalytics(
     0,
   );
   const nonDeductibleExpenses = totalExpenses - deductibleExpenses;
-  const netProfit = totalEarnings - deductibleExpenses;
+  const netProfit = totalEarnings - totalExpenses;
+  const targetProgress = totalEarnings - deductibleExpenses;
 
   const expectedAmount = notStarted ? 0 : currentDay * target;
-  const difference = netProfit - expectedAmount;
+  const difference = targetProgress - expectedAmount;
   const aheadDays = difference > 0 && target > 0 ? difference / target : 0;
   const behindDays = difference < 0 && target > 0 ? Math.abs(difference) / target : 0;
 
   const goalTotal = totalDays * target;
-  const remainingToGoal = Math.max(goalTotal - netProfit, 0);
-  const progressPct = goalTotal > 0 ? Math.min(100, Math.max(0, (netProfit / goalTotal) * 100)) : 0;
+  const remainingToGoal = Math.max(goalTotal - targetProgress, 0);
+  const progressPct = goalTotal > 0 ? Math.min(100, Math.max(0, (targetProgress / goalTotal) * 100)) : 0;
 
   const loggedDays = entries.length;
   const denom = loggedDays || 1;
   const avgDailyEarnings = totalEarnings / denom;
   const avgDailyExpenses = totalExpenses / denom;
   const avgDailyNet = netProfit / denom;
+  const avgDailyTargetNet = targetProgress / denom;
 
-  const daysOfRunway = target > 0 ? netProfit / target : 0;
+  const daysOfRunway = target > 0 ? targetProgress / target : 0;
   const requiredDailyToRecover =
     daysRemaining > 0 ? remainingToGoal / daysRemaining : 0;
-  const projectedFinalNet = loggedDays > 0 ? avgDailyNet * totalDays : 0;
+  const projectedFinalNet = loggedDays > 0 ? avgDailyTargetNet * totalDays : 0;
   const paceVsTargetPct = target > 0 ? (avgDailyNet / target) * 100 : 0;
 
   const { current: currentStreak, best: bestStreak } = computeStreaks(entries);
