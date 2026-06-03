@@ -483,6 +483,7 @@ export function computeAnalytics(
     deductibleExpenses,
     nonDeductibleExpenses,
     netProfit,
+    targetProgress,
     expectedAmount,
     difference,
     aheadDays,
