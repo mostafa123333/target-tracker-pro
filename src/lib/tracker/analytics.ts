@@ -288,18 +288,18 @@ export function computeAnalytics(
       body: "تقدر تجهز كاتوجوريز المصروفات والادخار من دلوقتي.",
     });
   } else if (isCompleted) {
-    if (netProfit >= goalTotal) {
+    if (targetProgress >= goalTotal) {
       tips.push({
         kind: "success",
         icon: "🏆",
-        title: `مبروك! تخطّيت الهدف بـ ${formatEGP(netProfit - goalTotal)}`,
-        body: `إجمالي صافي: ${formatEGP(netProfit)} على مدار ${totalDays} يوم.`,
+        title: `مبروك! تخطّيت الهدف بـ ${formatEGP(targetProgress - goalTotal)}`,
+        body: `صافي حقيقي في الجيب: ${formatEGP(netProfit)} على مدار ${totalDays} يوم.`,
       });
     } else {
       tips.push({
         kind: "warning",
         icon: "🎯",
-        title: `خلصت التحدي بـ ${formatEGP(netProfit)} (${progressPct.toFixed(0)}% من الهدف)`,
+        title: `خلصت التحدي بـ ${formatEGP(targetProgress)} (${progressPct.toFixed(0)}% من الهدف)`,
         body: "ابدأ جولة جديدة بهدف يومي أنسب لمعدلك الحقيقي.",
       });
     }
