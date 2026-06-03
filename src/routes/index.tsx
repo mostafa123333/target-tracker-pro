@@ -377,8 +377,9 @@ function Dashboard() {
           <ul className="divide-y divide-border/60">
             {last7.map((e) => {
               const net = entryNet(e, catMap);
+              const targetNet = entryTargetNet(e, catMap);
               const exp = entryTotalExpenses(e);
-              const hit = net >= settings.dailyTarget;
+              const hit = targetNet >= settings.dailyTarget;
               const isToday = e.date === todayISO();
               return (
                 <li key={e.id}>
