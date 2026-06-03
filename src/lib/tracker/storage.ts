@@ -33,7 +33,8 @@ function safeRead<T>(key: string, fallback: T): T {
   if (typeof window === "undefined") return fallback;
   for (const storage of getStores()) {
     try {
-      return readFromStorage(storage, key, fallback);
+      const raw = storage.getItem(key);
+      if (raw) return JSON.parse(raw) as T;
     } catch {
       // Try the next storage area before falling back.
     }
@@ -115,15 +116,16 @@ function updateStoredData(patch: Partial<TrackerData>) {
 }
 
 function hasLegacyData(): boolean {
-  try {
-    return Boolean(
-      localStorage.getItem(KEYS.settings) ||
-        localStorage.getItem(KEYS.entries) ||
-        localStorage.getItem(KEYS.categories),
-    );
-  } catch {
-    return false;
+  for (const storage of getStores()) {
+    try {
+      if (storage.getItem(KEYS.settings) || storage.getItem(KEYS.entries) || storage.getItem(KEYS.categories)) {
+        return true;
+      }
+    } catch {
+      // ignore
+    }
   }
+  return false;
 }
 
 function normalizeCategories(raw: unknown): Category[] {
@@ -145,8 +147,9 @@ function normalizeCategories(raw: unknown): Category[] {
 }
 
 export function loadAll(): TrackerData {
-  const data = readSnapshot() ?? readLegacyData();
-  if (!readSnapshot() || data.settings?.totalDays === 105 || hasLegacyData()) persistAll(data);
+  const snapshot = readSnapshot();
+  const data = snapshot ?? readLegacyData();
+  if (!snapshot || data.settings?.totalDays === 105 || hasLegacyData()) persistAll(data);
   return data;
 }
 
