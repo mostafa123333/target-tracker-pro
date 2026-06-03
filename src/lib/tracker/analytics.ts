@@ -40,8 +40,15 @@ export function entryNonDeductibleExpenses(
   );
 }
 
-/** Net amount counted toward the target. By default all expenses are deductible. */
+/** Real net for the day: earnings minus ALL expenses (including savings/non-deductible).
+ *  This is what the user actually has left in pocket. */
 export function entryNet(e: DailyEntry, map?: Map<string, Category>): number {
+  return (Number(e.earnings) || 0) - entryTotalExpenses(e);
+}
+
+/** Amount that counts toward the daily target — earnings minus deductible expenses only.
+ *  Non-deductible categories (savings, etc.) do NOT reduce target progress. */
+export function entryTargetNet(e: DailyEntry, map?: Map<string, Category>): number {
   return (Number(e.earnings) || 0) - entryDeductibleExpenses(e, map);
 }
 
@@ -94,7 +101,8 @@ export type Analytics = {
   totalExpenses: number; // ALL expenses
   deductibleExpenses: number;
   nonDeductibleExpenses: number;
-  netProfit: number; // earnings - deductibleExpenses (target-affecting)
+  netProfit: number; // earnings - ALL expenses (real money in pocket)
+  targetProgress: number; // earnings - deductibleExpenses (counts toward goal)
 
   expectedAmount: number;
   difference: number;
@@ -189,28 +197,30 @@ export function computeAnalytics(
     0,
   );
   const nonDeductibleExpenses = totalExpenses - deductibleExpenses;
-  const netProfit = totalEarnings - deductibleExpenses;
+  const netProfit = totalEarnings - totalExpenses;
+  const targetProgress = totalEarnings - deductibleExpenses;
 
   const expectedAmount = notStarted ? 0 : currentDay * target;
-  const difference = netProfit - expectedAmount;
+  const difference = targetProgress - expectedAmount;
   const aheadDays = difference > 0 && target > 0 ? difference / target : 0;
   const behindDays = difference < 0 && target > 0 ? Math.abs(difference) / target : 0;
 
   const goalTotal = totalDays * target;
-  const remainingToGoal = Math.max(goalTotal - netProfit, 0);
-  const progressPct = goalTotal > 0 ? Math.min(100, Math.max(0, (netProfit / goalTotal) * 100)) : 0;
+  const remainingToGoal = Math.max(goalTotal - targetProgress, 0);
+  const progressPct = goalTotal > 0 ? Math.min(100, Math.max(0, (targetProgress / goalTotal) * 100)) : 0;
 
   const loggedDays = entries.length;
   const denom = loggedDays || 1;
   const avgDailyEarnings = totalEarnings / denom;
   const avgDailyExpenses = totalExpenses / denom;
   const avgDailyNet = netProfit / denom;
+  const avgDailyTargetNet = targetProgress / denom;
 
-  const daysOfRunway = target > 0 ? netProfit / target : 0;
+  const daysOfRunway = target > 0 ? targetProgress / target : 0;
   const requiredDailyToRecover =
     daysRemaining > 0 ? remainingToGoal / daysRemaining : 0;
-  const projectedFinalNet = loggedDays > 0 ? avgDailyNet * totalDays : 0;
-  const paceVsTargetPct = target > 0 ? (avgDailyNet / target) * 100 : 0;
+  const projectedFinalNet = loggedDays > 0 ? avgDailyTargetNet * totalDays : 0;
+  const paceVsTargetPct = target > 0 ? (avgDailyTargetNet / target) * 100 : 0;
 
   const { current: currentStreak, best: bestStreak } = computeStreaks(entries);
 
@@ -278,18 +288,18 @@ export function computeAnalytics(
       body: "تقدر تجهز كاتوجوريز المصروفات والادخار من دلوقتي.",
     });
   } else if (isCompleted) {
-    if (netProfit >= goalTotal) {
+    if (targetProgress >= goalTotal) {
       tips.push({
         kind: "success",
         icon: "🏆",
-        title: `مبروك! تخطّيت الهدف بـ ${formatEGP(netProfit - goalTotal)}`,
-        body: `إجمالي صافي: ${formatEGP(netProfit)} على مدار ${totalDays} يوم.`,
+        title: `مبروك! تخطّيت الهدف بـ ${formatEGP(targetProgress - goalTotal)}`,
+        body: `صافي حقيقي في الجيب: ${formatEGP(netProfit)} على مدار ${totalDays} يوم.`,
       });
     } else {
       tips.push({
         kind: "warning",
         icon: "🎯",
-        title: `خلصت التحدي بـ ${formatEGP(netProfit)} (${progressPct.toFixed(0)}% من الهدف)`,
+        title: `خلصت التحدي بـ ${formatEGP(targetProgress)} (${progressPct.toFixed(0)}% من الهدف)`,
         body: "ابدأ جولة جديدة بهدف يومي أنسب لمعدلك الحقيقي.",
       });
     }
@@ -473,6 +483,7 @@ export function computeAnalytics(
     deductibleExpenses,
     nonDeductibleExpenses,
     netProfit,
+    targetProgress,
     expectedAmount,
     difference,
     aheadDays,
@@ -512,7 +523,7 @@ export function entryStatus(
   target: number,
   map?: Map<string, Category>,
 ): "ahead" | "behind" | "ontrack" {
-  const net = entryNet(e, map);
+  const net = entryTargetNet(e, map);
   if (net >= target * 1.05) return "ahead";
   if (net < target * 0.95) return "behind";
   return "ontrack";
