@@ -438,6 +438,7 @@ function Dashboard() {
         onOpenChange={setEntryOpen}
         initial={editing}
         categories={categories}
+        entries={entries}
         onAddCategory={addCategory}
         onSave={(e) => {
           upsertEntry(e);
