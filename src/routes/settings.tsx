@@ -140,8 +140,10 @@ function SettingsPage() {
           <div>
             <h2 className="text-base font-semibold">Expense categories</h2>
             <p className="text-xs text-muted-foreground">
-              Toggle whether a category subtracts from the daily target. Add a budget to
-              track progress for non-target categories (e.g. Savings).
+              Toggle whether a category deducts from the daily target. For
+              non-target categories, the budget is a spending cap — once
+              cumulative spend goes past it, the overflow starts deducting from
+              the target. (Savings categories can use the budget as a goal too.)
             </p>
           </div>
         </div>
