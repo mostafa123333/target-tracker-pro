@@ -84,7 +84,13 @@ export function DailyEntryDialog({
   const totalExp = entryTotalExpenses(draftEntry);
   const deductible = entryDeductibleExpenses(draftEntry, catMap);
   const nonDeductible = entryNonDeductibleExpenses(draftEntry, catMap);
-  const net = entryNet(draftEntry, catMap);
+  // Cap-aware target net: combine the draft with all OTHER entries so we capture
+  // overflow when a capped non-deductible category exceeds its budget.
+  const deductionsMap = useMemo(() => {
+    const others = entries.filter((e) => e.id !== draftEntry.id);
+    return computeEntryTargetDeductions([...others, draftEntry], catMap);
+  }, [entries, draftEntry, catMap]);
+  const net = entryTargetNetUsing(draftEntry, deductionsMap);
 
   function addExpense() {
     setExpenses((prev) => [
