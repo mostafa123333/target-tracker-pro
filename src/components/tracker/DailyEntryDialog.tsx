@@ -40,6 +40,7 @@ type Props = {
   onOpenChange: (o: boolean) => void;
   initial?: DailyEntry | null;
   categories: Category[];
+  entries?: DailyEntry[];
   onAddCategory: (name: string, deductsFromTarget?: boolean) => void;
   onSave: (entry: DailyEntry) => void;
 };
@@ -49,6 +50,7 @@ export function DailyEntryDialog({
   onOpenChange,
   initial,
   categories,
+  entries = [],
   onAddCategory,
   onSave,
 }: Props) {
