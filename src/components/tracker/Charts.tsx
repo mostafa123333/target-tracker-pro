@@ -126,9 +126,10 @@ export function ExpectedVsActual({
   const catMap = useMemo(() => makeCategoryMap(categories), [categories]);
   const data = useMemo(() => {
     const sorted = [...entries].sort((a, b) => (a.date < b.date ? -1 : 1));
+    const deductions = computeEntryTargetDeductions(sorted, catMap);
     let cumulative = 0;
     return sorted.map((e, i) => {
-      cumulative += entryTargetNet(e, catMap);
+      cumulative += entryTargetNetUsing(e, deductions);
       return {
         date: fmtDay(e.date),
         actual: Math.round(cumulative),
