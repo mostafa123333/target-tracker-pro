@@ -16,11 +16,27 @@ export function useTracker() {
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    const d = loadAll();
-    setSettings(d.settings);
-    setEntries(d.entries);
-    setCategories(d.categories);
-    setHydrated(true);
+    const refresh = () => {
+      const d = loadAll();
+      setSettings(d.settings);
+      setEntries(d.entries);
+      setCategories(d.categories);
+      setHydrated(true);
+    };
+    refresh();
+    const onVisible = () => {
+      if (typeof document !== "undefined" && document.visibilityState === "visible") refresh();
+    };
+    window.addEventListener("focus", refresh);
+    window.addEventListener("pageshow", refresh);
+    window.addEventListener("storage", refresh);
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      window.removeEventListener("focus", refresh);
+      window.removeEventListener("pageshow", refresh);
+      window.removeEventListener("storage", refresh);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, []);
 
   const updateSettings = useCallback((s: TrackerSettings) => {
