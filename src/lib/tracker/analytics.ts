@@ -235,8 +235,9 @@ export function computeAnalytics(
 
   const totalEarnings = entries.reduce((s, e) => s + (Number(e.earnings) || 0), 0);
   const totalExpenses = entries.reduce((s, e) => s + entryTotalExpenses(e), 0);
+  const deductionsMap = computeEntryTargetDeductions(entries, catMap);
   const deductibleExpenses = entries.reduce(
-    (s, e) => s + entryDeductibleExpenses(e, catMap),
+    (s, e) => s + (deductionsMap.get(e.id) ?? 0),
     0,
   );
   const nonDeductibleExpenses = totalExpenses - deductibleExpenses;
