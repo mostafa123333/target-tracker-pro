@@ -107,6 +107,7 @@ function Dashboard() {
   const last7 = [...entries]
     .sort((x, y) => (x.date < y.date ? 1 : -1))
     .slice(0, 7);
+  const deductionsMap = computeEntryTargetDeductions(entries, catMap);
 
   return (
     <div className="space-y-6">
