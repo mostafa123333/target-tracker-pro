@@ -16,7 +16,7 @@ import {
   YAxis,
 } from "recharts";
 import type { Category, DailyEntry, TrackerSettings } from "@/lib/tracker/types";
-import { entryNet, entryTargetNet, entryTotalExpenses, makeCategoryMap } from "@/lib/tracker/analytics";
+import { computeEntryTargetDeductions, entryNet, entryTargetNetUsing, entryTotalExpenses, makeCategoryMap } from "@/lib/tracker/analytics";
 
 const COLORS = [
   "oklch(0.78 0.18 152)",
