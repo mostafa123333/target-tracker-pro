@@ -20,9 +20,11 @@ import {
 import { Plus, Trash2 } from "lucide-react";
 import type { Category, DailyEntry, Expense } from "@/lib/tracker/types";
 import {
+  computeEntryTargetDeductions,
   entryDeductibleExpenses,
   entryNet,
   entryNonDeductibleExpenses,
+  entryTargetNetUsing,
   entryTotalExpenses,
   formatEGP,
   makeCategoryMap,
