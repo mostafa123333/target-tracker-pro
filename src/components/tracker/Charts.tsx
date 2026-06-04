@@ -16,7 +16,7 @@ import {
   YAxis,
 } from "recharts";
 import type { Category, DailyEntry, TrackerSettings } from "@/lib/tracker/types";
-import { entryNet, entryTargetNet, entryTotalExpenses, makeCategoryMap } from "@/lib/tracker/analytics";
+import { computeEntryTargetDeductions, entryNet, entryTargetNetUsing, entryTotalExpenses, makeCategoryMap } from "@/lib/tracker/analytics";
 
 const COLORS = [
   "oklch(0.78 0.18 152)",
@@ -126,9 +126,10 @@ export function ExpectedVsActual({
   const catMap = useMemo(() => makeCategoryMap(categories), [categories]);
   const data = useMemo(() => {
     const sorted = [...entries].sort((a, b) => (a.date < b.date ? -1 : 1));
+    const deductions = computeEntryTargetDeductions(sorted, catMap);
     let cumulative = 0;
     return sorted.map((e, i) => {
-      cumulative += entryTargetNet(e, catMap);
+      cumulative += entryTargetNetUsing(e, deductions);
       return {
         date: fmtDay(e.date),
         actual: Math.round(cumulative),

@@ -23,7 +23,7 @@ import { OnboardingDialog } from "@/components/tracker/OnboardingDialog";
 import { DailyEntryDialog } from "@/components/tracker/DailyEntryDialog";
 import { StatCard } from "@/components/tracker/StatCard";
 import { EarningsLine, ExpectedVsActual } from "@/components/tracker/Charts";
-import { computeAnalytics, entryNet, entryTargetNet, entryTotalExpenses, formatEGP, todayISO } from "@/lib/tracker/analytics";
+import { computeAnalytics, computeEntryTargetDeductions, entryNet, entryTargetNetUsing, entryTotalExpenses, formatEGP, todayISO } from "@/lib/tracker/analytics";
 import type { DailyEntry } from "@/lib/tracker/types";
 import { cn } from "@/lib/utils";
 
@@ -107,6 +107,7 @@ function Dashboard() {
   const last7 = [...entries]
     .sort((x, y) => (x.date < y.date ? 1 : -1))
     .slice(0, 7);
+  const deductionsMap = computeEntryTargetDeductions(entries, catMap);
 
   return (
     <div className="space-y-6">
@@ -377,7 +378,7 @@ function Dashboard() {
           <ul className="divide-y divide-border/60">
             {last7.map((e) => {
               const net = entryNet(e, catMap);
-              const targetNet = entryTargetNet(e, catMap);
+              const targetNet = entryTargetNetUsing(e, deductionsMap);
               const exp = entryTotalExpenses(e);
               const hit = targetNet >= settings.dailyTarget;
               const isToday = e.date === todayISO();
@@ -437,6 +438,7 @@ function Dashboard() {
         onOpenChange={setEntryOpen}
         initial={editing}
         categories={categories}
+        entries={entries}
         onAddCategory={addCategory}
         onSave={(e) => {
           upsertEntry(e);

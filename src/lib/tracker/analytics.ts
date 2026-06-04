@@ -47,9 +47,52 @@ export function entryNet(e: DailyEntry, map?: Map<string, Category>): number {
 }
 
 /** Amount that counts toward the daily target — earnings minus deductible expenses only.
- *  Non-deductible categories (savings, etc.) do NOT reduce target progress. */
+ *  Non-deductible categories (savings, capped spend, etc.) do NOT reduce target progress.
+ *  This per-entry helper treats non-deductible spend as fully excluded. For cap-aware
+ *  results across many entries, use `computeEntryTargetDeductions` + `entryTargetNetUsing`. */
 export function entryTargetNet(e: DailyEntry, map?: Map<string, Category>): number {
   return (Number(e.earnings) || 0) - entryDeductibleExpenses(e, map);
+}
+
+/** Earnings minus the precomputed deductible total for this entry. */
+export function entryTargetNetUsing(e: DailyEntry, deductions: Map<string, number>): number {
+  return (Number(e.earnings) || 0) - (deductions.get(e.id) ?? 0);
+}
+
+/** Walks entries in chronological order and returns total deductible amount per entry,
+ *  accounting for non-deductible categories with a budget cap: any spend that pushes the
+ *  cumulative balance above the cap counts as deductible (eats from the target). Savings
+ *  categories without a cap stay fully non-deductible. */
+export function computeEntryTargetDeductions(
+  entries: DailyEntry[],
+  map?: Map<string, Category>,
+): Map<string, number> {
+  const sorted = [...entries].sort((a, b) =>
+    a.date < b.date ? -1 : a.date > b.date ? 1 : a.id < b.id ? -1 : 1,
+  );
+  const cumByCat = new Map<string, number>();
+  const out = new Map<string, number>();
+  for (const e of sorted) {
+    let deduct = 0;
+    for (const x of e.expenses) {
+      const amt = Number(x.amount) || 0;
+      if (isDeductible(x.category, map)) {
+        deduct += amt;
+        continue;
+      }
+      const cat = map?.get(x.category);
+      const cap = cat && typeof cat.budget === "number" && cat.budget > 0 ? cat.budget : undefined;
+      const prev = cumByCat.get(x.category) ?? 0;
+      const next = prev + amt;
+      cumByCat.set(x.category, next);
+      if (cap !== undefined && amt > 0 && next > cap) {
+        const over = Math.min(amt, next - cap);
+        deduct += over;
+      }
+    }
+    out.set(e.id, deduct);
+  }
+  return out;
 }
 
 export function todayISO(): string {
@@ -192,8 +235,9 @@ export function computeAnalytics(
 
   const totalEarnings = entries.reduce((s, e) => s + (Number(e.earnings) || 0), 0);
   const totalExpenses = entries.reduce((s, e) => s + entryTotalExpenses(e), 0);
+  const deductionsMap = computeEntryTargetDeductions(entries, catMap);
   const deductibleExpenses = entries.reduce(
-    (s, e) => s + entryDeductibleExpenses(e, catMap),
+    (s, e) => s + (deductionsMap.get(e.id) ?? 0),
     0,
   );
   const nonDeductibleExpenses = totalExpenses - deductibleExpenses;
