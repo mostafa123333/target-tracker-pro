@@ -75,6 +75,7 @@ function EntriesPage() {
         onOpenChange={setOpen}
         initial={editing}
         categories={categories}
+        entries={entries}
         onAddCategory={addCategory}
         onSave={(e) => {
           upsertEntry(e);
