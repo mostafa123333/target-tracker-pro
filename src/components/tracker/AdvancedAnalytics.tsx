@@ -131,7 +131,7 @@ export function AdvancedAnalytics({ entries, settings, categories }: Props) {
         </div>
         <div className="h-64 w-full">
           <ResponsiveContainer>
-            <AreaChart data={x.cumulativeSeries} dir="ltr">
+            <AreaChart data={x.cumulativeSeries}>
               <defs>
                 <linearGradient id="cumNetFill" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor="oklch(0.78 0.18 152)" stopOpacity={0.5} />
@@ -172,7 +172,7 @@ export function AdvancedAnalytics({ entries, settings, categories }: Props) {
           </div>
           <div className="h-56">
             <ResponsiveContainer>
-              <LineChart data={x.movingAvgSeries} dir="ltr">
+              <LineChart data={x.movingAvgSeries}>
                 <CartesianGrid stroke="oklch(1 0 0 / 0.05)" />
                 <XAxis dataKey="date" tick={{ fontSize: 11, fill: "oklch(0.7 0.012 240)" }} />
                 <YAxis tick={{ fontSize: 11, fill: "oklch(0.7 0.012 240)" }} />
@@ -205,7 +205,7 @@ export function AdvancedAnalytics({ entries, settings, categories }: Props) {
           </div>
           <div className="h-56">
             <ResponsiveContainer>
-              <BarChart data={x.distribution} dir="ltr">
+              <BarChart data={x.distribution}>
                 <CartesianGrid stroke="oklch(1 0 0 / 0.05)" />
                 <XAxis dataKey="label" tick={{ fontSize: 10, fill: "oklch(0.7 0.012 240)" }} />
                 <YAxis tick={{ fontSize: 11, fill: "oklch(0.7 0.012 240)" }} allowDecimals={false} />
@@ -226,7 +226,7 @@ export function AdvancedAnalytics({ entries, settings, categories }: Props) {
           </div>
           <div className="h-64">
             <ResponsiveContainer>
-              <BarChart data={x.monthly} dir="ltr">
+              <BarChart data={x.monthly}>
                 <CartesianGrid stroke="oklch(1 0 0 / 0.05)" />
                 <XAxis dataKey="label" tick={{ fontSize: 10, fill: "oklch(0.7 0.012 240)" }} />
                 <YAxis tick={{ fontSize: 11, fill: "oklch(0.7 0.012 240)" }} />
