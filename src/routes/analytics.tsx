@@ -121,7 +121,10 @@ function AnalyticsPage() {
               <CategoryPie entries={entries} />
             </div>
           </section>
+
+          <AdvancedAnalytics entries={entries} settings={settings} categories={categories} />
         </>
+
       )}
     </div>
   );
