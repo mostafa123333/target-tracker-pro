@@ -4,6 +4,7 @@ import { useTracker } from "@/hooks/useTracker";
 import { OnboardingDialog } from "@/components/tracker/OnboardingDialog";
 import { StatCard } from "@/components/tracker/StatCard";
 import { CategoryPie, ExpensesBar } from "@/components/tracker/Charts";
+import { AdvancedAnalytics } from "@/components/tracker/AdvancedAnalytics";
 import { computeAnalytics, entryNet, entryTotalExpenses, formatEGP, makeCategoryMap } from "@/lib/tracker/analytics";
 import { Trophy, Frown, Flame, TrendingUp, TrendingDown, BarChart3 } from "lucide-react";
 
