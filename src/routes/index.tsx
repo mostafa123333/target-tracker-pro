@@ -305,6 +305,9 @@ function Dashboard() {
         </section>
       )}
 
+      {/* Gamification: level, achievements, weekday, heatmap */}
+      <GamificationPanel entries={entries} settings={settings} categories={categories} />
+
       {/* Category budgets (non-deductible & budgeted) */}
       {a.categoryStats.some((s) => s.budget !== undefined || !s.deductsFromTarget) && (
         <section className="glass-card p-5">
