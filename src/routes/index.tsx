@@ -23,6 +23,7 @@ import { OnboardingDialog } from "@/components/tracker/OnboardingDialog";
 import { DailyEntryDialog } from "@/components/tracker/DailyEntryDialog";
 import { StatCard } from "@/components/tracker/StatCard";
 import { EarningsLine, ExpectedVsActual } from "@/components/tracker/Charts";
+import { GamificationPanel } from "@/components/tracker/Gamification";
 import { computeAnalytics, computeEntryTargetDeductions, entryNet, entryTargetNetUsing, entryTotalExpenses, formatEGP, todayISO } from "@/lib/tracker/analytics";
 import type { DailyEntry } from "@/lib/tracker/types";
 import { cn } from "@/lib/utils";
@@ -303,6 +304,9 @@ function Dashboard() {
           </div>
         </section>
       )}
+
+      {/* Gamification: level, achievements, weekday, heatmap */}
+      <GamificationPanel entries={entries} settings={settings} categories={categories} />
 
       {/* Category budgets (non-deductible & budgeted) */}
       {a.categoryStats.some((s) => s.budget !== undefined || !s.deductsFromTarget) && (
