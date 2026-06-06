@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Download, Upload, RotateCcw, Trash2, Plus } from "lucide-react";
+import { Download, Upload, RotateCcw, Trash2, Plus, FileSpreadsheet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,6 +20,7 @@ import {
 import { useTracker } from "@/hooks/useTracker";
 import { OnboardingDialog } from "@/components/tracker/OnboardingDialog";
 import { exportBackup } from "@/lib/tracker/storage";
+import { entriesToCsv, downloadCsv } from "@/lib/tracker/csvExport";
 import { computeAnalytics, formatEGP } from "@/lib/tracker/analytics";
 
 export const Route = createFileRoute("/settings")({
@@ -266,7 +267,21 @@ function SettingsPage() {
         <h2 className="mb-4 text-base font-semibold">Data</h2>
         <div className="flex flex-wrap gap-2">
           <Button variant="secondary" onClick={handleBackup}>
-            <Download className="mr-1.5 h-4 w-4" /> Backup
+            <Download className="mr-1.5 h-4 w-4" /> Backup (JSON)
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={() => {
+              if (!entries.length) {
+                toast.error("No entries to export");
+                return;
+              }
+              const csv = entriesToCsv(entries, categories);
+              downloadCsv(`tracker-entries-${new Date().toISOString().slice(0, 10)}.csv`, csv);
+              toast.success("CSV downloaded");
+            }}
+          >
+            <FileSpreadsheet className="mr-1.5 h-4 w-4" /> Export CSV
           </Button>
           <Button variant="secondary" onClick={() => fileRef.current?.click()}>
             <Upload className="mr-1.5 h-4 w-4" /> Restore

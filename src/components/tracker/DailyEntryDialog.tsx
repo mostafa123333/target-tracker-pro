@@ -99,6 +99,33 @@ export function DailyEntryDialog({
     ]);
   }
 
+  // Top recurring expense presets from history: (category, amount) pairs by frequency.
+  const presets = useMemo(() => {
+    const counts = new Map<string, { category: string; amount: number; count: number }>();
+    for (const e of entries) {
+      if (e.id === initial?.id) continue;
+      for (const x of e.expenses) {
+        const amt = Math.round(Number(x.amount) || 0);
+        if (amt <= 0) continue;
+        const key = `${x.category}__${amt}`;
+        const prev = counts.get(key);
+        if (prev) prev.count++;
+        else counts.set(key, { category: x.category, amount: amt, count: 1 });
+      }
+    }
+    return [...counts.values()]
+      .filter((p) => p.count >= 2)
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 6);
+  }, [entries, initial?.id]);
+
+  function applyPreset(p: { category: string; amount: number }) {
+    setExpenses((prev) => [
+      ...prev,
+      { id: rid(), category: p.category, amount: p.amount },
+    ]);
+  }
+
   function updateExpense(id: string, patch: Partial<Expense>) {
     setExpenses((prev) => prev.map((e) => (e.id === id ? { ...e, ...patch } : e)));
   }
@@ -159,6 +186,24 @@ export function DailyEntryDialog({
                 <Plus className="mr-1 h-4 w-4" /> Add
               </Button>
             </div>
+
+            {presets.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {presets.map((p, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => applyPreset(p)}
+                    className="inline-flex items-center gap-1 rounded-full border border-border/60 bg-muted/40 px-2.5 py-1 text-xs text-foreground transition-colors hover:bg-primary/10 hover:border-primary/40"
+                  >
+                    <Plus className="h-3 w-3 text-primary" />
+                    <span>{p.category}</span>
+                    <span className="text-muted-foreground">·</span>
+                    <span className="stat-number">{formatEGP(p.amount)}</span>
+                  </button>
+                ))}
+              </div>
+            )}
 
             <div className="space-y-2">
               {expenses.length === 0 && (

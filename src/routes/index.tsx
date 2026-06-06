@@ -24,6 +24,7 @@ import { DailyEntryDialog } from "@/components/tracker/DailyEntryDialog";
 import { StatCard } from "@/components/tracker/StatCard";
 import { EarningsLine, ExpectedVsActual } from "@/components/tracker/Charts";
 import { GamificationPanel } from "@/components/tracker/Gamification";
+import { WeeklyReview } from "@/components/tracker/WeeklyReview";
 import { computeAnalytics, computeEntryTargetDeductions, entryNet, entryTargetNetUsing, entryTotalExpenses, formatEGP, todayISO } from "@/lib/tracker/analytics";
 import type { DailyEntry } from "@/lib/tracker/types";
 import { cn } from "@/lib/utils";
@@ -304,6 +305,9 @@ function Dashboard() {
           </div>
         </section>
       )}
+
+      {/* Weekly review */}
+      <WeeklyReview entries={entries} settings={settings} categories={categories} />
 
       {/* Gamification: level, achievements, weekday, heatmap */}
       <GamificationPanel entries={entries} settings={settings} categories={categories} />

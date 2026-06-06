@@ -65,8 +65,20 @@ function EntriesPage() {
           setOpen(true);
         }}
         onDelete={(id) => {
+          const removed = entries.find((e) => e.id === id);
           deleteEntry(id);
-          toast.success("Entry deleted");
+          toast.success("Entry deleted", {
+            action: removed
+              ? {
+                  label: "Undo",
+                  onClick: () => {
+                    upsertEntry(removed);
+                    toast.success("Entry restored");
+                  },
+                }
+              : undefined,
+            duration: 6000,
+          });
         }}
       />
 
