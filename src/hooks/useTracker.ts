@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { toast } from "sonner";
 import type { Category, DailyEntry, TrackerSettings } from "@/lib/tracker/types";
 import {
   loadAll,
@@ -44,14 +45,34 @@ export function useTracker() {
     saveSettings(s);
   }, []);
 
-  const upsertEntry = useCallback((entry: DailyEntry) => {
+  const upsertEntry = useCallback((entry: DailyEntry): boolean => {
+    let ok = true;
     setEntries((prev) => {
-      const idx = prev.findIndex((e) => e.id === entry.id || e.date === entry.date);
-      const next = idx >= 0 ? prev.map((e, i) => (i === idx ? entry : e)) : [...prev, entry];
+      const byId = prev.findIndex((e) => e.id === entry.id);
+      // If we're editing an existing entry, only collapse on date when it's the same row.
+      if (byId >= 0) {
+        const collision = prev.find((e) => e.date === entry.date && e.id !== entry.id);
+        if (collision) {
+          ok = false;
+          toast.error(`في إنتري تاني محفوظ بتاريخ ${entry.date} — غيّر التاريخ أو احذف القديم الأول.`);
+          return prev;
+        }
+        const next = prev.map((e, i) => (i === byId ? entry : e));
+        next.sort((a, b) => (a.date < b.date ? 1 : -1));
+        saveEntries(next);
+        return next;
+      }
+      // New entry: if date already has one, replace it (classic "add today" upsert).
+      const byDate = prev.findIndex((e) => e.date === entry.date);
+      const next =
+        byDate >= 0
+          ? prev.map((e, i) => (i === byDate ? { ...entry, id: prev[byDate].id } : e))
+          : [...prev, entry];
       next.sort((a, b) => (a.date < b.date ? 1 : -1));
       saveEntries(next);
       return next;
     });
+    return ok;
   }, []);
 
   const deleteEntry = useCallback((id: string) => {

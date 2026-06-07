@@ -42,7 +42,7 @@ type Props = {
   categories: Category[];
   entries?: DailyEntry[];
   onAddCategory: (name: string, deductsFromTarget?: boolean) => void;
-  onSave: (entry: DailyEntry) => void;
+  onSave: (entry: DailyEntry) => boolean | void;
 };
 
 export function DailyEntryDialog({
@@ -149,8 +149,8 @@ export function DailyEntryDialog({
       expenses: expenses.filter((e) => Number(e.amount) !== 0 && e.category),
       notes: notes.trim() || undefined,
     };
-    onSave(entry);
-    onOpenChange(false);
+    const result = onSave(entry);
+    if (result !== false) onOpenChange(false);
   }
 
   return (
@@ -178,6 +178,16 @@ export function DailyEntryDialog({
               />
             </div>
           </div>
+
+          {(() => {
+            const conflict = entries.find((e) => e.date === date && e.id !== (initial?.id ?? "draft"));
+            if (!conflict) return null;
+            return (
+              <div className="rounded-md border border-[color:var(--warning)]/40 bg-[color:var(--warning)]/10 px-3 py-2 text-xs text-[color:var(--warning)]">
+                ⚠ في إنتري تاني محفوظ في {date}. الحفظ هيرفض التعديل — غيّر التاريخ أو احذف القديم.
+              </div>
+            );
+          })()}
 
           <div className="grid gap-2">
             <div className="flex items-center justify-between">

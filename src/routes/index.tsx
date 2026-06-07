@@ -449,8 +449,9 @@ function Dashboard() {
         entries={entries}
         onAddCategory={addCategory}
         onSave={(e) => {
-          upsertEntry(e);
-          toast.success("Day saved");
+          const ok = upsertEntry(e);
+          if (ok) toast.success("Day saved");
+          return ok;
         }}
       />
     </div>
