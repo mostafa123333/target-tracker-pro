@@ -149,8 +149,8 @@ export function DailyEntryDialog({
       expenses: expenses.filter((e) => Number(e.amount) !== 0 && e.category),
       notes: notes.trim() || undefined,
     };
-    onSave(entry);
-    onOpenChange(false);
+    const result = onSave(entry);
+    if (result !== false) onOpenChange(false);
   }
 
   return (
