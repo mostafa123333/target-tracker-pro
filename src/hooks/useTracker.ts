@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { toast } from "sonner";
 import type { Category, DailyEntry, TrackerSettings } from "@/lib/tracker/types";
 import {
   loadAll,
