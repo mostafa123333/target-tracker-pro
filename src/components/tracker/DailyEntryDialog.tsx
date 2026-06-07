@@ -42,7 +42,7 @@ type Props = {
   categories: Category[];
   entries?: DailyEntry[];
   onAddCategory: (name: string, deductsFromTarget?: boolean) => void;
-  onSave: (entry: DailyEntry) => void;
+  onSave: (entry: DailyEntry) => boolean | void;
 };
 
 export function DailyEntryDialog({
