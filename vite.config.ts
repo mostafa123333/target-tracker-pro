@@ -47,6 +47,12 @@ function shimNitroServerEntry() {
 }
 
 export default defineConfig({
+  // Use a plain Node preset for the SSR bundle. The default Cloudflare preset
+  // produces a Workers module whose fetch handler requires an `env` with
+  // `ASSETS` bindings, which the TanStack Start prerender preview server
+  // doesn't provide → prerender crashes with a 500.
+  nitro: { preset: "node-server" },
+
   tanstackStart: {
     // Ship as a static SPA — no server functions are used (localStorage only),
     // so we render a single shell and hydrate client-side. Works on any static host.
@@ -54,6 +60,7 @@ export default defineConfig({
       enabled: true,
     },
   },
+
 
   vite: {
     base: basePath,
