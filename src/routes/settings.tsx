@@ -142,10 +142,11 @@ function SettingsPage() {
             <h2 className="text-base font-semibold">Expense categories</h2>
             <p className="text-xs text-muted-foreground">
               Toggle whether a category deducts from the daily target. For
-              non-target categories, the budget is a spending cap — once
-              cumulative spend goes past it, the overflow starts deducting from
-              the target. (Savings categories can use the budget as a goal too.)
+              non-target categories, the budget acts as a spending cap — you can
+              spend freely up to it, and only the overflow starts deducting from
+              the target. All expenses still reduce your net profit.
             </p>
+
           </div>
         </div>
 
