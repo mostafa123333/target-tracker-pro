@@ -4,27 +4,90 @@
 //     componentTagger (dev-only), VITE_* env injection, @ path alias, React/TanStack dedupe,
 //     error logger plugins, and sandbox detection (port/host/strictPort).
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
+import { existsSync, writeFileSync } from "node:fs";
+import { resolve } from "node:path";
+
 
 // BASE_PATH lets the same build work in Lovable preview ("/") and on
 // GitHub Pages project sites ("/<repo>/"). The Pages workflow sets it.
 const basePath = process.env.BASE_PATH || "/";
 
+/**
+ * The Lovable sandbox forces Nitro's `cloudflare-module` preset. That preset
+ * emits `dist/server/index.mjs` whose default export expects to be invoked as
+ * `fetch(request, env, ctx)` with an `env.ASSETS` binding. TanStack Start's
+ * prerender step spins up a preview server that:
+ *   1. imports `dist/server/<serverInputBasename>.js` (expects `.js`, not `.mjs`)
+ *   2. calls `serverBuild.fetch(request)` with no env
+ *
+ * Both assumptions break in the sandbox → the prerender crawl of `/` 500s.
+ *
+ * This plugin writes a small ESM wrapper at `dist/server/server.js` that
+ * re-exports a Cloudflare-shaped handler filled in with a stub `env.ASSETS`
+ * and empty `ctx`, so the preview server can boot it and render the SPA shell.
+ */
+function shimNitroServerEntry() {
+  return {
+    name: "shim-nitro-server-entry",
+    apply: "build" as const,
+    closeBundle: {
+      order: "post" as const,
+      handler() {
+        const dir = resolve(process.cwd(), "dist/server");
+        const src = resolve(dir, "index.mjs");
+        const dst = resolve(dir, "server.js");
+        if (!existsSync(src) || existsSync(dst)) return;
+        try {
+          // Wrapper that adapts Cloudflare Workers module → srvx-style fetch(request).
+          writeFileSync(
+            dst,
+            [
+              `import mod from "./index.mjs";`,
+              `const stubAssets = { fetch: async () => new Response("", { status: 404 }) };`,
+              `const stubCtx = { waitUntil() {}, passThroughOnException() {} };`,
+              `function toPlain(req) {`,
+              `  // srvx's NodeRequest exposes read-only .ip/.runtime getters that`,
+              `  // the Cloudflare-module preset tries to overwrite. Reconstruct a`,
+              `  // plain Request so those assignments succeed.`,
+              `  const init = { method: req.method, headers: req.headers };`,
+              `  if (req.method !== "GET" && req.method !== "HEAD") init.body = req.body;`,
+              `  return new Request(req.url, init);`,
+              `}`,
+              `export default {`,
+              `  fetch(request, env, ctx) {`,
+              `    return mod.fetch(toPlain(request), env ?? { ASSETS: stubAssets }, ctx ?? stubCtx);`,
+              `  },`,
+              `};`,
+              ``,
+            ].join("\n"),
+          );
+
+          writeFileSync(
+            resolve(dir, "package.json"),
+            JSON.stringify({ type: "module" }),
+          );
+        } catch {
+          /* ignore */
+        }
+      },
+    },
+  };
+}
+
 export default defineConfig({
+
+
   tanstackStart: {
-    // Redirect TanStack Start's bundled server entry to src/server.ts
-    server: { entry: "server" },
     // Ship as a static SPA — no server functions are used (localStorage only),
     // so we render a single shell and hydrate client-side. Works on any static host.
     spa: {
       enabled: true,
-      maskPath: "/",
-      prerender: {
-        // Static hosts need a real index.html at the publish root.
-        outputPath: "/index",
-      },
     },
   },
+
+
   vite: {
     base: basePath,
+    plugins: [shimNitroServerEntry()],
   },
 });
