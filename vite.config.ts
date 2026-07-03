@@ -11,8 +11,6 @@ const basePath = process.env.BASE_PATH || "/";
 
 export default defineConfig({
   tanstackStart: {
-    // Redirect TanStack Start's bundled server entry to src/server.ts
-    server: { entry: "server" },
     // Ship as a static SPA — no server functions are used (localStorage only),
     // so we render a single shell and hydrate client-side. Works on any static host.
     spa: {
@@ -24,6 +22,7 @@ export default defineConfig({
       },
     },
   },
+
   vite: {
     base: basePath,
   },
