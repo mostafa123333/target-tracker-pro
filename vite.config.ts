@@ -15,11 +15,6 @@ export default defineConfig({
     // so we render a single shell and hydrate client-side. Works on any static host.
     spa: {
       enabled: true,
-      maskPath: "/",
-      prerender: {
-        // Static hosts need a real index.html at the publish root.
-        outputPath: "/index",
-      },
     },
   },
 
@@ -27,3 +22,4 @@ export default defineConfig({
     base: basePath,
   },
 });
+
