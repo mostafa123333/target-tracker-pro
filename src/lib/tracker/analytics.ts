@@ -368,14 +368,9 @@ export function computeAnalytics(
           body: "ثبات الأداء ده هو اللي بيوصلك للهدف. كمّل.",
         });
       }
-      if (difference >= target * 2) {
-        tips.push({
-          kind: "info",
-          icon: "🏦",
-          title: `حوّل الزيادة لكاتوجري ادخار`,
-          body: `عندك ${formatEGP(difference)} فوق المطلوب — لو نقلت منها ${formatEGP(target)} لادخار، هتبني عادة بدل ما تتصرف.`,
-        });
-      }
+      // (removed savings-box overflow suggestion — non-deductible+budget
+      // categories are spending caps, not savings jars.)
+
     } else {
       const need = requiredDailyToRecover;
       const gap = Math.abs(difference);
