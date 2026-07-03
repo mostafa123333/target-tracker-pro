@@ -281,8 +281,15 @@ export function computeExtendedAnalytics(
     (s, e) => s + entryTargetNetUsing(e, deductions),
     0,
   );
-  const daysSoFar = sorted.length;
-  const daysLeftInChallenge = Math.max(0, totalDays - daysSoFar);
+  // Base days-left on the actual challenge calendar (start date → today),
+  // not on how many days the user has logged. Missed days must count against
+  // the forecast, otherwise the projection stays flat no matter what.
+  const startMs = settings.startDate ? parseDate(settings.startDate).getTime() : NaN;
+  const todayMs = parseDate(new Date().toISOString().slice(0, 10)).getTime();
+  const daysElapsed = Number.isFinite(startMs)
+    ? Math.min(totalDays, Math.max(0, Math.floor((todayMs - startMs) / 86400000) + 1))
+    : sorted.length;
+  const daysLeftInChallenge = Math.max(0, totalDays - daysElapsed);
   const forecastFinalNet = totalCumNet + recentAvgNet * daysLeftInChallenge;
   const forecastConfidence: "low" | "medium" | "high" =
     sorted.length >= 14 ? "high" : sorted.length >= 7 ? "medium" : "low";
