@@ -254,17 +254,20 @@ export function computeAnalytics(
   const progressPct = goalTotal > 0 ? Math.min(100, Math.max(0, (targetProgress / goalTotal) * 100)) : 0;
 
   const loggedDays = entries.length;
-  const denom = loggedDays || 1;
-  const avgDailyEarnings = totalEarnings / denom;
-  const avgDailyExpenses = totalExpenses / denom;
-  const avgDailyNet = netProfit / denom;
-  const avgDailyTargetNet = targetProgress / denom;
+  // Daily averages are computed against elapsed challenge days (not just the
+  // logged ones) so a missed day drags the average down honestly.
+  const avgDenom = Math.max(daysElapsed, 1);
+  const avgDailyEarnings = totalEarnings / avgDenom;
+  const avgDailyExpenses = totalExpenses / avgDenom;
+  const avgDailyNet = netProfit / avgDenom;
+  const avgDailyTargetNet = targetProgress / avgDenom;
 
   const daysOfRunway = target > 0 ? targetProgress / target : 0;
   const requiredDailyToRecover =
     daysRemaining > 0 ? remainingToGoal / daysRemaining : 0;
-  const projectedFinalNet = loggedDays > 0 ? avgDailyTargetNet * totalDays : 0;
+  const projectedFinalNet = daysElapsed > 0 ? avgDailyTargetNet * totalDays : 0;
   const paceVsTargetPct = target > 0 ? (avgDailyTargetNet / target) * 100 : 0;
+
 
   const { current: currentStreak, best: bestStreak } = computeStreaks(entries);
 
@@ -365,14 +368,9 @@ export function computeAnalytics(
           body: "ثبات الأداء ده هو اللي بيوصلك للهدف. كمّل.",
         });
       }
-      if (difference >= target * 2) {
-        tips.push({
-          kind: "info",
-          icon: "🏦",
-          title: `حوّل الزيادة لكاتوجري ادخار`,
-          body: `عندك ${formatEGP(difference)} فوق المطلوب — لو نقلت منها ${formatEGP(target)} لادخار، هتبني عادة بدل ما تتصرف.`,
-        });
-      }
+      // (removed savings-box overflow suggestion — non-deductible+budget
+      // categories are spending caps, not savings jars.)
+
     } else {
       const need = requiredDailyToRecover;
       const gap = Math.abs(difference);
@@ -486,32 +484,44 @@ export function computeAnalytics(
       body: `إجمالي ادخار: ${formatEGP(totalSavingsContrib)}.`,
     });
   }
-  const savingsCats = categoryStats.filter((s) => !s.deductsFromTarget && s.budget);
-  for (const s of savingsCats) {
-    if (s.pct !== undefined && s.pct >= 100) {
-      tips.push({
-        kind: "success",
-        icon: "✅",
-        title: `وصلت لهدف "${s.name}" بالكامل`,
-        body: "ارفع الهدف أو ابدأ كاتوجري ادخار جديد.",
-      });
-    } else if (s.pct !== undefined && s.pct >= 50) {
-      tips.push({
-        kind: "info",
-        icon: "🎯",
-        title: `"${s.name}": ${s.pct.toFixed(0)}% من الهدف`,
-        body: `فاضل ${formatEGP(s.remaining ?? 0)} للوصول لـ ${formatEGP(s.budget as number)}.`,
-      });
-    }
-    if (s.withdrawn > s.contributed * 0.5 && s.contributed > 0) {
-      tips.push({
-        kind: "warning",
-        icon: "⛔",
-        title: `بتسحب كتير من "${s.name}"`,
-        body: `سحبت ${formatEGP(s.withdrawn)} من ${formatEGP(s.contributed)} ادخرتهم. حاول تقلل السحب.`,
-      });
+  // Category-goal tips: distinguish between a spending CAP (non-deductible +
+  // budget → allowance before it starts eating from the target) and a pure
+  // savings jar (non-deductible, no budget).
+  for (const s of categoryStats) {
+    if (s.deductsFromTarget) continue;
+    const hasBudget = s.budget !== undefined;
+    if (hasBudget) {
+      const cap = s.budget as number;
+      const spent = Math.max(s.balance, 0);
+      const over = spent - cap;
+      if (over > 0) {
+        tips.push({
+          kind: "warning",
+          icon: "🚧",
+          title: `تخطّيت سقف "${s.name}" بـ ${formatEGP(over)}`,
+          body: `الزيادة بتتخصم من التارجت. قلّل الصرف على البند ده أو ارفع السقف لو مش واقعي.`,
+        });
+      } else if (s.pct !== undefined && s.pct >= 80) {
+        tips.push({
+          kind: "info",
+          icon: "⚠️",
+          title: `"${s.name}": صرفت ${s.pct.toFixed(0)}% من السقف`,
+          body: `فاضلك ${formatEGP(s.remaining ?? 0)} قبل ما يبدأ يخصم من الهدف.`,
+        });
+      }
+    } else {
+      // Pure savings jar (no cap).
+      if (s.withdrawn > s.contributed * 0.5 && s.contributed > 0) {
+        tips.push({
+          kind: "warning",
+          icon: "⛔",
+          title: `بتسحب كتير من "${s.name}"`,
+          body: `سحبت ${formatEGP(s.withdrawn)} من ${formatEGP(s.contributed)} ادخرتهم. حاول تقلل السحب.`,
+        });
+      }
     }
   }
+
 
 
   return {

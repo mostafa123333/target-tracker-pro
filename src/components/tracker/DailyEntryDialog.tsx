@@ -280,9 +280,15 @@ export function DailyEntryDialog({
                       </Button>
                     </div>
                     {!deducts ? (
-                      <p className="pl-1 text-[11px] text-muted-foreground">
-                        Savings category — positive = deposit, negative = withdrawal
-                      </p>
+                      cat?.budget && cat.budget > 0 ? (
+                        <p className="pl-1 text-[11px] text-muted-foreground">
+                          Capped category — free to spend up to {formatEGP(cat.budget)}; anything above deducts from the target.
+                        </p>
+                      ) : (
+                        <p className="pl-1 text-[11px] text-muted-foreground">
+                          Savings jar — positive = deposit, negative = withdrawal
+                        </p>
+                      )
                     ) : (
                       exp.amount < 0 && (
                         <p className="pl-1 text-[11px] text-muted-foreground">
@@ -290,6 +296,7 @@ export function DailyEntryDialog({
                         </p>
                       )
                     )}
+
                   </div>
                 );
               })}
