@@ -318,59 +318,83 @@ function Dashboard() {
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-base font-semibold">Category goals</h2>
             <span className="text-xs text-muted-foreground">
-              Tracked separately from your daily target
+              Caps &amp; savings tracked separately
             </span>
           </div>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {a.categoryStats
               .filter((s) => s.budget !== undefined || !s.deductsFromTarget)
-              .map((s) => (
-                <div
-                  key={s.name}
-                  className="rounded-xl border border-border/60 bg-muted/20 p-4"
-                >
-                  <div className="mb-1 flex items-center justify-between">
-                    <span className="text-sm font-medium">{s.name}</span>
-                    {!s.deductsFromTarget && (
-                      <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[10px] uppercase tracking-wider text-primary">
-                        savings
-                      </span>
+              .map((s) => {
+                const isCap = !s.deductsFromTarget && s.budget !== undefined;
+                const isSavings = !s.deductsFromTarget && s.budget === undefined;
+                const over =
+                  isCap && s.budget !== undefined
+                    ? Math.max(s.balance - s.budget, 0)
+                    : 0;
+                return (
+                  <div
+                    key={s.name}
+                    className="rounded-xl border border-border/60 bg-muted/20 p-4"
+                  >
+                    <div className="mb-1 flex items-center justify-between">
+                      <span className="text-sm font-medium">{s.name}</span>
+                      {isCap ? (
+                        <span className="rounded-full bg-[color:var(--warning)]/15 px-2 py-0.5 text-[10px] uppercase tracking-wider text-[color:var(--warning)]">
+                          cap
+                        </span>
+                      ) : isSavings ? (
+                        <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[10px] uppercase tracking-wider text-primary">
+                          savings
+                        </span>
+                      ) : null}
+                    </div>
+                    {isCap && s.budget !== undefined ? (
+                      <>
+                        <div
+                          className={
+                            "stat-number text-xl " +
+                            (over > 0 ? "text-destructive" : "")
+                          }
+                        >
+                          {(s.pct ?? 0).toFixed(0)}%
+                        </div>
+                        <div className="mb-2 text-xs text-muted-foreground">
+                          {formatEGP(Math.max(s.balance, 0))} of {formatEGP(s.budget)}
+                          {over > 0
+                            ? ` · ${formatEGP(over)} over cap`
+                            : ` · ${formatEGP(s.remaining ?? 0)} left before it hits the target`}
+                        </div>
+                        <Progress value={Math.min(100, s.pct ?? 0)} className="h-1.5" />
+                      </>
+                    ) : s.budget !== undefined ? (
+                      // Deductible category with a budget — kept as a soft
+                      // spending goal (informational only).
+                      <>
+                        <div className="stat-number text-xl">
+                          {(s.pct ?? 0).toFixed(0)}%
+                        </div>
+                        <div className="mb-2 text-xs text-muted-foreground">
+                          {formatEGP(s.balance)} of {formatEGP(s.budget)} ·{" "}
+                          {formatEGP(s.remaining ?? 0)} left
+                        </div>
+                        <Progress value={s.pct ?? 0} className="h-1.5" />
+                      </>
+                    ) : (
+                      // Pure savings jar (no cap)
+                      <>
+                        <div className="stat-number text-xl">{formatEGP(s.balance)}</div>
+                        <div className="text-xs text-muted-foreground">
+                          + {formatEGP(s.contributed)} · − {formatEGP(s.withdrawn)}
+                        </div>
+                      </>
                     )}
                   </div>
-                  {s.budget !== undefined ? (
-                    <>
-                      <div className="stat-number text-xl">
-                        {(s.pct ?? 0).toFixed(0)}%
-                      </div>
-                      <div className="mb-2 text-xs text-muted-foreground">
-                        {formatEGP(s.balance)} of {formatEGP(s.budget)} ·{" "}
-                        {formatEGP(s.remaining ?? 0)} left
-                      </div>
-                      <Progress value={s.pct ?? 0} className="h-1.5" />
-                      {(s.contributed > 0 || s.withdrawn > 0) && (
-                        <div className="mt-2 flex items-center justify-between text-[11px] text-muted-foreground">
-                          <span className="text-[color:var(--success)]">
-                            + {formatEGP(s.contributed)} added
-                          </span>
-                          <span className="text-destructive">
-                            − {formatEGP(s.withdrawn)} taken
-                          </span>
-                        </div>
-                      )}
-                    </>
-                  ) : (
-                    <>
-                      <div className="stat-number text-xl">{formatEGP(s.balance)}</div>
-                      <div className="text-xs text-muted-foreground">
-                        + {formatEGP(s.contributed)} · − {formatEGP(s.withdrawn)}
-                      </div>
-                    </>
-                  )}
-                </div>
-              ))}
+                );
+              })}
           </div>
         </section>
       )}
+
 
       {/* Last 7 days */}
       <section className="glass-card p-5">
