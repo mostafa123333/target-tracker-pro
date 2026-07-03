@@ -13,10 +13,18 @@ import { resolve } from "node:path";
 const basePath = process.env.BASE_PATH || "/";
 
 /**
- * TanStack Start's preview-server-plugin (used by the prerender step) imports
- * `dist/server/<inputBasename>.js`, but Nitro emits `dist/server/index.mjs`.
- * This tiny shim mirrors the file into the expected name so prerender can
- * boot the SSR handler.
+ * The Lovable sandbox forces Nitro's `cloudflare-module` preset. That preset
+ * emits `dist/server/index.mjs` whose default export expects to be invoked as
+ * `fetch(request, env, ctx)` with an `env.ASSETS` binding. TanStack Start's
+ * prerender step spins up a preview server that:
+ *   1. imports `dist/server/<serverInputBasename>.js` (expects `.js`, not `.mjs`)
+ *   2. calls `serverBuild.fetch(request)` with no env
+ *
+ * Both assumptions break in the sandbox → the prerender crawl of `/` 500s.
+ *
+ * This plugin writes a small ESM wrapper at `dist/server/server.js` that
+ * re-exports a Cloudflare-shaped handler filled in with a stub `env.ASSETS`
+ * and empty `ctx`, so the preview server can boot it and render the SPA shell.
  */
 function shimNitroServerEntry() {
   return {
@@ -28,30 +36,37 @@ function shimNitroServerEntry() {
         const dir = resolve(process.cwd(), "dist/server");
         const src = resolve(dir, "index.mjs");
         const dst = resolve(dir, "server.js");
-        if (existsSync(src) && !existsSync(dst)) {
-          try {
-            copyFileSync(src, dst);
-            // The copied .js file is ESM but Node needs the package hint.
-            writeFileSync(
-              resolve(dir, "package.json"),
-              JSON.stringify({ type: "module" }),
-            );
-          } catch {
-            /* ignore */
-          }
+        if (!existsSync(src) || existsSync(dst)) return;
+        try {
+          // Wrapper that adapts Cloudflare Workers module → srvx-style fetch(request).
+          writeFileSync(
+            dst,
+            [
+              `import mod from "./index.mjs";`,
+              `const stubAssets = { fetch: async () => new Response("", { status: 404 }) };`,
+              `const stubCtx = { waitUntil() {}, passThroughOnException() {} };`,
+              `export default {`,
+              `  fetch(request, env, ctx) {`,
+              `    return mod.fetch(request, env ?? { ASSETS: stubAssets }, ctx ?? stubCtx);`,
+              `  },`,
+              `};`,
+              ``,
+            ].join("\n"),
+          );
+          writeFileSync(
+            resolve(dir, "package.json"),
+            JSON.stringify({ type: "module" }),
+          );
+        } catch {
+          /* ignore */
         }
       },
-
     },
   };
 }
 
 export default defineConfig({
-  // Use a plain Node preset for the SSR bundle. The default Cloudflare preset
-  // produces a Workers module whose fetch handler requires an `env` with
-  // `ASSETS` bindings, which the TanStack Start prerender preview server
-  // doesn't provide → prerender crashes with a 500.
-  nitro: { preset: "node-server" },
+
 
   tanstackStart: {
     // Ship as a static SPA — no server functions are used (localStorage only),
