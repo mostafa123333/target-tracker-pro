@@ -4,8 +4,9 @@
 //     componentTagger (dev-only), VITE_* env injection, @ path alias, React/TanStack dedupe,
 //     error logger plugins, and sandbox detection (port/host/strictPort).
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
-import { copyFileSync, existsSync } from "node:fs";
+import { copyFileSync, existsSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
+
 
 // BASE_PATH lets the same build work in Lovable preview ("/") and on
 // GitHub Pages project sites ("/<repo>/"). The Pages workflow sets it.
