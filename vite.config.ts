@@ -25,16 +25,23 @@ function shimNitroServerEntry() {
     closeBundle: {
       order: "post" as const,
       handler() {
-        const src = resolve(process.cwd(), "dist/server/index.mjs");
-        const dst = resolve(process.cwd(), "dist/server/server.js");
+        const dir = resolve(process.cwd(), "dist/server");
+        const src = resolve(dir, "index.mjs");
+        const dst = resolve(dir, "server.js");
         if (existsSync(src) && !existsSync(dst)) {
           try {
             copyFileSync(src, dst);
+            // The copied .js file is ESM but Node needs the package hint.
+            writeFileSync(
+              resolve(dir, "package.json"),
+              JSON.stringify({ type: "module" }),
+            );
           } catch {
             /* ignore */
           }
         }
       },
+
     },
   };
 }
