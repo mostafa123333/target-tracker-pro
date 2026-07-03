@@ -254,17 +254,20 @@ export function computeAnalytics(
   const progressPct = goalTotal > 0 ? Math.min(100, Math.max(0, (targetProgress / goalTotal) * 100)) : 0;
 
   const loggedDays = entries.length;
-  const denom = loggedDays || 1;
-  const avgDailyEarnings = totalEarnings / denom;
-  const avgDailyExpenses = totalExpenses / denom;
-  const avgDailyNet = netProfit / denom;
-  const avgDailyTargetNet = targetProgress / denom;
+  // Daily averages are computed against elapsed challenge days (not just the
+  // logged ones) so a missed day drags the average down honestly.
+  const avgDenom = Math.max(daysElapsed, 1);
+  const avgDailyEarnings = totalEarnings / avgDenom;
+  const avgDailyExpenses = totalExpenses / avgDenom;
+  const avgDailyNet = netProfit / avgDenom;
+  const avgDailyTargetNet = targetProgress / avgDenom;
 
   const daysOfRunway = target > 0 ? targetProgress / target : 0;
   const requiredDailyToRecover =
     daysRemaining > 0 ? remainingToGoal / daysRemaining : 0;
-  const projectedFinalNet = loggedDays > 0 ? avgDailyTargetNet * totalDays : 0;
+  const projectedFinalNet = daysElapsed > 0 ? avgDailyTargetNet * totalDays : 0;
   const paceVsTargetPct = target > 0 ? (avgDailyTargetNet / target) * 100 : 0;
+
 
   const { current: currentStreak, best: bestStreak } = computeStreaks(entries);
 
