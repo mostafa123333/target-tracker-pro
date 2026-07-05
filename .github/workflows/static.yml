@@ -37,6 +37,8 @@ jobs:
       - name: Prepare Pages artifact
         run: |
           OUT_DIR="dist/client"
+          test -f "$OUT_DIR/_shell.html"
+          cp "$OUT_DIR/_shell.html" "$OUT_DIR/index.html"
           test -f "$OUT_DIR/index.html"
           cp "$OUT_DIR/index.html" "$OUT_DIR/404.html"
           touch "$OUT_DIR/.nojekyll"
