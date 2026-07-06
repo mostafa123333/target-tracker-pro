@@ -82,6 +82,13 @@ export default defineConfig({
     // so we render a single shell and hydrate client-side. Works on any static host.
     spa: {
       enabled: true,
+      prerender: {
+        // GitHub Pages expects a real index.html at the artifact root.
+        // Emitting it directly avoids a fragile post-build _shell.html copy step.
+        outputPath: "/index.html",
+        crawlLinks: false,
+        retryCount: 0,
+      },
     },
   },
 
