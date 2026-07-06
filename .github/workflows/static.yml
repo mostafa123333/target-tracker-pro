@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -36,8 +36,13 @@ jobs:
 
       - name: Prepare Pages artifact
         run: |
+          set -euxo pipefail
           OUT_DIR="dist/client"
-          test -f "$OUT_DIR/index.html"
+          test -d "$OUT_DIR"
+          if [ ! -f "$OUT_DIR/index.html" ]; then
+            test -f "$OUT_DIR/_shell.html"
+            cp "$OUT_DIR/_shell.html" "$OUT_DIR/index.html"
+          fi
           cp "$OUT_DIR/index.html" "$OUT_DIR/404.html"
           touch "$OUT_DIR/.nojekyll"
           ls -la "$OUT_DIR"
