@@ -7,24 +7,23 @@ import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 import { existsSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-
 // BASE_PATH lets the same build work in Lovable preview ("/") and on
 // GitHub Pages project sites ("/<repo>/"). The Pages workflow sets it.
 const basePath = process.env.BASE_PATH || "/";
 
 /**
- * The Lovable sandbox forces Nitro's `cloudflare-module` preset. That preset
- * emits `dist/server/index.mjs` whose default export expects to be invoked as
- * `fetch(request, env, ctx)` with an `env.ASSETS` binding. TanStack Start's
- * prerender step spins up a preview server that:
- *   1. imports `dist/server/<serverInputBasename>.js` (expects `.js`, not `.mjs`)
- *   2. calls `serverBuild.fetch(request)` with no env
+ * Why this shim exists (the "Cannot find module dist/server/server.js" /
+ * "Failed to fetch /: Internal Server Error" build failure):
  *
- * Both assumptions break in the sandbox → the prerender crawl of `/` 500s.
+ * TanStack Start's SPA shell prerender ALWAYS runs — `prerender.enabled: false`
+ * does not turn it off. It boots a preview server that imports
+ * `dist/server/server.js` and calls `serverBuild.fetch(request)`.
+ * Nitro's `cloudflare-module` preset instead emits `dist/server/index.mjs`
+ * with a `fetch(request, env, ctx)` signature and an `env.ASSETS` binding.
  *
- * This plugin writes a small ESM wrapper at `dist/server/server.js` that
- * re-exports a Cloudflare-shaped handler filled in with a stub `env.ASSETS`
- * and empty `ctx`, so the preview server can boot it and render the SPA shell.
+ * This plugin writes `dist/server/server.js` as a thin ESM adapter over
+ * `index.mjs`, supplying a stub `env.ASSETS` and `ctx`, so the shell renders
+ * and `dist/client/index.html` is produced.
  */
 function shimNitroServerEntry() {
   return {
@@ -38,7 +37,6 @@ function shimNitroServerEntry() {
         const dst = resolve(dir, "server.js");
         if (!existsSync(src) || existsSync(dst)) return;
         try {
-          // Wrapper that adapts Cloudflare Workers module → srvx-style fetch(request).
           writeFileSync(
             dst,
             [
@@ -75,8 +73,6 @@ function shimNitroServerEntry() {
 }
 
 export default defineConfig({
-
-
   tanstackStart: {
     // Ship as a static SPA — no server functions are used (localStorage only),
     // so we render a single shell and hydrate client-side. Works on any static host.
@@ -91,7 +87,6 @@ export default defineConfig({
       },
     },
   },
-
 
   vite: {
     base: basePath,
