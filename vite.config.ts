@@ -4,8 +4,8 @@
 //     componentTagger (dev-only), VITE_* env injection, @ path alias, React/TanStack dedupe,
 //     error logger plugins, and sandbox detection (port/host/strictPort).
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
-import { existsSync, writeFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { relative, resolve, sep } from "node:path";
 
 // BASE_PATH lets the same build work in Lovable preview ("/") and on
 // GitHub Pages project sites ("/<repo>/"). The Pages workflow sets it.
@@ -18,29 +18,47 @@ const basePath = process.env.BASE_PATH || "/";
  * TanStack Start's SPA shell prerender ALWAYS runs — `prerender.enabled: false`
  * does not turn it off. It boots a preview server that imports
  * `dist/server/server.js` and calls `serverBuild.fetch(request)`.
- * Nitro's `cloudflare-module` preset instead emits `dist/server/index.mjs`
- * with a `fetch(request, env, ctx)` signature and an `env.ASSETS` binding.
+ * Nitro's `cloudflare-module` preset can emit `.output/server/index.mjs`
+ * instead of `dist/server/server.js`, with a `fetch(request, env, ctx)`
+ * signature and an `env.ASSETS` binding.
  *
- * This plugin writes `dist/server/server.js` as a thin ESM adapter over
- * `index.mjs`, supplying a stub `env.ASSETS` and `ctx`, so the shell renders
- * and `dist/client/index.html` is produced.
+ * This plugin writes the missing `dist/server/server.js` as a thin ESM adapter
+ * over Nitro's real `index.mjs`, supplying a stub `env.ASSETS` and `ctx`, so
+ * TanStack's SPA shell prerender can complete cleanly.
  */
 function shimNitroServerEntry() {
+  const projectRoot = process.cwd();
+  const tanstackPreviewDir = resolve(projectRoot, "dist/server");
+  const nitroServerDirs = [
+    resolve(projectRoot, "dist/server"),
+    resolve(projectRoot, ".output/server"),
+  ];
+
   return {
     name: "shim-nitro-server-entry",
     apply: "build" as const,
     closeBundle: {
       order: "post" as const,
       handler() {
-        const dir = resolve(process.cwd(), "dist/server");
-        const src = resolve(dir, "index.mjs");
-        const dst = resolve(dir, "server.js");
-        if (!existsSync(src) || existsSync(dst)) return;
+        const realServerDir = nitroServerDirs.find((dir) =>
+          existsSync(resolve(dir, "index.mjs")),
+        );
+        if (!realServerDir) return;
+
+        const src = resolve(realServerDir, "index.mjs");
+        const dst = resolve(tanstackPreviewDir, "server.js");
+        if (existsSync(dst)) return;
+
         try {
+          mkdirSync(tanstackPreviewDir, { recursive: true });
+          const importPath = relative(tanstackPreviewDir, src)
+            .split(sep)
+            .join("/");
+
           writeFileSync(
             dst,
             [
-              `import mod from "./index.mjs";`,
+              `import mod from "${importPath.startsWith(".") ? importPath : `./${importPath}`}";`,
               `const stubAssets = { fetch: async () => new Response("", { status: 404 }) };`,
               `const stubCtx = { waitUntil() {}, passThroughOnException() {} };`,
               `function toPlain(req) {`,
@@ -61,7 +79,7 @@ function shimNitroServerEntry() {
           );
 
           writeFileSync(
-            resolve(dir, "package.json"),
+            resolve(tanstackPreviewDir, "package.json"),
             JSON.stringify({ type: "module" }),
           );
         } catch {
@@ -74,6 +92,13 @@ function shimNitroServerEntry() {
 
 export default defineConfig({
   tanstackStart: {
+    // Do not let TanStack discover/crawl additional static routes. The app is
+    // deployed as one SPA shell, so only the explicit SPA shell is rendered.
+    prerender: {
+      autoStaticPathsDiscovery: false,
+      crawlLinks: false,
+      retryCount: 0,
+    },
     // Ship as a static SPA — no server functions are used (localStorage only),
     // so we render a single shell and hydrate client-side. Works on any static host.
     spa: {
@@ -85,6 +110,15 @@ export default defineConfig({
         crawlLinks: false,
         retryCount: 0,
       },
+    },
+  },
+
+  nitro: {
+    preset: "cloudflare-module",
+    output: {
+      dir: "dist",
+      serverDir: "dist/server",
+      publicDir: "dist/client",
     },
   },
 
