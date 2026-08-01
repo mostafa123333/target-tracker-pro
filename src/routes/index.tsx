@@ -54,6 +54,8 @@ function Dashboard() {
   } = useTracker();
   const [entryOpen, setEntryOpen] = useState(false);
   const [editing, setEditing] = useState<DailyEntry | null>(null);
+  const [showAllStats, setShowAllStats] = useState(false);
+
 
   const analytics = useMemo(
     () => (settings ? computeAnalytics(entries, settings, categories) : null),
