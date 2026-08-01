@@ -173,14 +173,9 @@ function Dashboard() {
         </div>
       </section>
 
-      {/* Stat grid */}
+      {/* Primary stats — always visible */}
       <section className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <StatCard label="Net profit" value={formatEGP(a.netProfit)} icon={Wallet} tone="primary" />
-        <StatCard label="Total earnings" value={formatEGP(a.totalEarnings)} icon={TrendingUp} tone="success" />
-        <StatCard label="Total expenses" value={formatEGP(a.totalExpenses)} icon={TrendingDown} tone="destructive" />
-        <StatCard label="Daily target" value={formatEGP(settings.dailyTarget)} icon={Target} />
-
-        <StatCard label="Expected so far" value={formatEGP(a.expectedAmount)} icon={CalendarCheck} />
         <StatCard
           label={ahead ? "Ahead by" : "Behind by"}
           value={formatEGP(Math.abs(a.difference))}
@@ -195,21 +190,39 @@ function Dashboard() {
           icon={CalendarDays}
         />
         <StatCard
-          label="Runway"
-          value={`${a.daysOfRunway.toFixed(1)} days`}
-          hint="At current daily target"
-          icon={Coins}
-        />
-      </section>
-
-      {/* Pace & streak row */}
-      <section className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <StatCard
           label="Current streak"
           value={`${a.currentStreak} ${a.currentStreak === 1 ? "day" : "days"}`}
           hint={`Best: ${a.bestStreak}`}
           icon={Flame}
           tone={a.currentStreak > 0 ? "warning" : "default"}
+        />
+      </section>
+
+      {/* Secondary stats — collapsed on mobile to keep the screen scannable */}
+      <div className="md:hidden">
+        <Button
+          variant="secondary"
+          className="w-full"
+          onClick={() => setShowAllStats((v) => !v)}
+        >
+          {showAllStats ? "Hide extra stats" : "Show all stats"}
+        </Button>
+      </div>
+      <section
+        className={cn(
+          "grid-cols-2 gap-3 md:grid md:grid-cols-4",
+          showAllStats ? "grid" : "hidden",
+        )}
+      >
+        <StatCard label="Total earnings" value={formatEGP(a.totalEarnings)} icon={TrendingUp} tone="success" />
+        <StatCard label="Total expenses" value={formatEGP(a.totalExpenses)} icon={TrendingDown} tone="destructive" />
+        <StatCard label="Daily target" value={formatEGP(settings.dailyTarget)} icon={Target} />
+        <StatCard label="Expected so far" value={formatEGP(a.expectedAmount)} icon={CalendarCheck} />
+        <StatCard
+          label="Runway"
+          value={`${a.daysOfRunway.toFixed(1)} days`}
+          hint="At current daily target"
+          icon={Coins}
         />
         <StatCard
           label="Projected total"
@@ -232,6 +245,7 @@ function Dashboard() {
           icon={Clock}
         />
       </section>
+
 
       <section className="grid gap-4 lg:grid-cols-3">
         <div className="glass-card p-5 lg:col-span-2">
