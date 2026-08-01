@@ -77,7 +77,7 @@ function Dashboard() {
   const prevTodayHit = useRef(false);
 
   useEffect(() => {
-    if (!gamification || !analytics) return;
+    if (!settings || !gamification || !analytics) return;
     const currentUnlocked = new Set(
       gamification.achievements.filter((a) => a.unlocked).map((a) => a.id),
     );
@@ -98,7 +98,7 @@ function Dashboard() {
     // Today's target hit
     const deductionsMap = computeEntryTargetDeductions(entries, catMap);
     const todayHit =
-      analytics.todaysEntry &&
+      analytics.todaysEntry !== undefined &&
       entryTargetNetUsing(analytics.todaysEntry, deductionsMap) >= settings.dailyTarget;
     if (todayHit && !prevTodayHit.current) {
       toast.success("🎯 هدف اليوم تحقق!", {
@@ -107,7 +107,7 @@ function Dashboard() {
       });
     }
     prevTodayHit.current = todayHit;
-  }, [gamification, analytics, entries, catMap, settings.dailyTarget]);
+  }, [gamification, analytics, entries, catMap, settings]);
 
   const openAddToday = () => {
     setEditing(analytics?.todaysEntry ?? null);
