@@ -2,9 +2,9 @@ import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { formatEGP, todayISO } from "@/lib/tracker/analytics";
+import { formatEGP } from "@/lib/tracker/analytics";
 import type { DailyEntry, TrackerSettings } from "@/lib/tracker/types";
-import { Zap, TrendingUp, Target, Flame, Trophy } from "lucide-react";
+import { Zap, Flame, Trophy } from "lucide-react";
 
 export type MotivationCardProps = {
   settings: TrackerSettings;
