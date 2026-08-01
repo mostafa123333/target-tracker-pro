@@ -236,5 +236,3 @@ function getMessages({
     tone: "danger" as const,
   };
 }
-
-export { Target, TrendingUp, Flame, Trophy, Zap };
