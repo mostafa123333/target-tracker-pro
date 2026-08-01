@@ -1,6 +1,7 @@
 import type { Category, DailyEntry, TrackerSettings } from "./types";
 import {
   computeEntryTargetDeductions,
+  daysBetween,
   entryNet,
   entryTargetNetUsing,
   entryTotalExpenses,
@@ -297,20 +298,27 @@ export function computeGamification(
   let tripleTargetDays = 0;
   let bigDay500 = false;
   let bigDay1000 = false;
+  let bigDayEarnings1000 = false;
   let bestNetDay = 0;
+  let bestEarningsDay = 0;
   for (const e of entries) {
     const tn = entryTargetNetUsing(e, deductions);
     if (tn >= target && target > 0) hitTargetDays++;
     if (tn >= target * 2 && target > 0) doubleTargetDays++;
     if (tn >= target * 3 && target > 0) tripleTargetDays++;
     const n = entryNet(e, catMap);
+    const earn = Number(e.earnings) || 0;
     if (n > bestNetDay) bestNetDay = n;
+    if (earn > bestEarningsDay) bestEarningsDay = earn;
     if (n >= 500) bigDay500 = true;
     if (n >= 1000) bigDay1000 = true;
+    if (earn >= 1000) bigDayEarnings1000 = true;
   }
 
   // Perfect week: any 7 consecutive logged dates where each hits target
   let perfectWeek = false;
+  // Perfect 2 weeks: any 14 consecutive logged dates hitting target
+  let perfectTwoWeeks = false;
   const sortedEntries = [...entries].sort((a, b) => (a.date < b.date ? -1 : 1));
   for (let i = 0; i + 6 < sortedEntries.length; i++) {
     const window = sortedEntries.slice(i, i + 7);
@@ -328,9 +336,48 @@ export function computeGamification(
     );
     if (allHit) {
       perfectWeek = true;
+      // Try extending to 14
+      if (i + 13 < sortedEntries.length) {
+        const window14 = sortedEntries.slice(i, i + 14);
+        const consecutive14 = window14.every((e, idx) => {
+          if (idx === 0) return true;
+          const diff = Math.round(
+            (parseDate(e.date).getTime() - parseDate(window14[idx - 1].date).getTime()) /
+              86_400_000,
+          );
+          return diff === 1;
+        });
+        if (consecutive14 && window14.every((e) => entryTargetNetUsing(e, deductions) >= target && target > 0)) {
+          perfectTwoWeeks = true;
+        }
+      }
       break;
     }
   }
+
+  // Consecutive target-hits (any streak of hits, not just 7)
+  let bestHitStreak = 0;
+  let currentHitStreak = 0;
+  let prevHitDate: string | null = null;
+  for (const e of sortedEntries) {
+    const hit = entryTargetNetUsing(e, deductions) >= target && target > 0;
+    if (!hit) {
+      currentHitStreak = 0;
+      prevHitDate = null;
+      continue;
+    }
+    if (prevHitDate && daysBetween(prevHitDate, e.date) === 1) {
+      currentHitStreak++;
+    } else {
+      currentHitStreak = 1;
+    }
+    if (currentHitStreak > bestHitStreak) bestHitStreak = currentHitStreak;
+    prevHitDate = e.date;
+  }
+
+  // Total days at 2x or 3x (cumulative, not consecutive)
+  const totalDoubleDays = doubleTargetDays;
+  const totalTripleDays = tripleTargetDays;
 
   // Lean spending day (expenses < 20% of earnings) count
   let leanDays = 0;
@@ -381,16 +428,29 @@ export function computeGamification(
     ach("hit_1", "🎯", "أول هدف", "اكسب التارجت في يوم", hitTargetDays, 1),
     ach("hit_10", "🏹", "صياد أهداف", "حقق التارجت في 10 أيام", hitTargetDays, 10),
     ach("hit_30", "🥇", "ملك التارجت", "حقق التارجت في 30 يوم", hitTargetDays, 30),
+    ach("hit_50", "👑", "إمبراطور الأهداف", "حقق التارجت في 50 يوم", hitTargetDays, 50),
+    ach("hit_streak_5", "🎰", "خمسة على التوالي", "5 أيام متتالية كلها فوق التارجت", bestHitStreak, 5),
+    ach("hit_streak_10", "🚂", "عشرة متتالية", "10 أيام متتالية كلها فوق التارجت", bestHitStreak, 10),
     ach("double", "💪", "ضعف الهدف", "يوم بـ ضعف التارجت", doubleTargetDays, 1),
+    ach("double_5", "🥊", "خمس أضعاف", "5 أيام بـ ضعف التارجت", totalDoubleDays, 5),
+    ach("double_10", "🚁", "عشر أضعاف", "10 أيام بـ ضعف التارجت", totalDoubleDays, 10),
     ach("triple", "🚀", "ثلاثة أضعاف", "يوم بـ 3 أضعاف التارجت", tripleTargetDays, 1),
+    ach("triple_3", "🛸", "3 مرات ثلاثية", "3 أيام بـ 3 أضعاف التارجت", totalTripleDays, 3),
     ach("big_500", "💵", "خمسمية صافي", "صافي يوم ≥ 500 EGP", bigDay500 ? 1 : 0, 1),
     ach("big_1000", "💎", "ألف في اليوم", "صافي يوم ≥ 1000 EGP", bigDay1000 ? 1 : 0, 1),
+    ach("big_earnings_1000", "💸", "ألف دخل في يوم", "دخل يوم ≥ 1000 EGP", bigDayEarnings1000 ? 1 : 0, 1),
     ach("perfect_week", "🏆", "أسبوع مثالي", "7 أيام كلها فوق التارجت", perfectWeek ? 1 : 0, 1),
+    ach("perfect_two_weeks", "🏅", "أسبوعين مثاليين", "14 يوم كلها فوق التارجت", perfectTwoWeeks ? 1 : 0, 1),
     ach("lean_5", "🧘", "إنفاق منضبط", "5 أيام بمصروفات أقل من 20%", leanDays, 5),
     ach("saver_1k", "🏦", "مدّخر مبتدئ", "ادخر 1000 EGP", savingsBalance, 1000),
     ach("saver_5k", "💰", "مدّخر محترف", "ادخر 5000 EGP", savingsBalance, 5000),
     ach("earn_10k", "📈", "أول 10 آلاف", "إجمالي دخل 10,000 EGP", totalEarnings, 10000),
     ach("earn_25k", "🌠", "ربع مليون قرش", "إجمالي دخل 25,000 EGP", totalEarnings, 25000),
+    ach("earn_50k", "🚀", "خمسين ألف", "إجمالي دخل 50,000 EGP", totalEarnings, 50000),
+    ach("earn_100k", "🌌", "مئة ألف", "إجمالي دخل 100,000 EGP", totalEarnings, 100000),
+    ach("best_day_500", "⭐", "أفضل يوم 500", "أعلى صافي يوم ≥ 500 EGP", bestNetDay >= 500 ? 1 : 0, 1),
+    ach("best_day_1000", "🌟", "أفضل يوم 1000", "أعلى صافي يوم ≥ 1000 EGP", bestNetDay >= 1000 ? 1 : 0, 1),
+    ach("best_earnings_day_1000", "🔥", "يوم ذهبي", "أعلى دخل في يوم ≥ 1000 EGP", bestEarningsDay >= 1000 ? 1 : 0, 1),
   ];
 
   const unlockedCount = achievements.filter((a) => a.unlocked).length;
