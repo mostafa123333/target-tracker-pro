@@ -476,7 +476,7 @@ function Dashboard() {
       <button
         onClick={openAddToday}
         aria-label="Add today"
-        className="fixed bottom-20 right-4 z-30 grid h-14 w-14 place-items-center rounded-full bg-primary text-primary-foreground shadow-[0_10px_40px_-8px_oklch(0.78_0.18_152_/_0.6)] transition-transform hover:scale-105 active:scale-95 md:hidden"
+        className="fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] right-4 z-30 grid h-14 w-14 place-items-center rounded-full bg-primary text-primary-foreground shadow-[0_10px_40px_-8px_oklch(0.78_0.18_152_/_0.6)] transition-transform hover:scale-105 active:scale-95 md:hidden"
       >
         <Plus className="h-6 w-6" />
       </button>

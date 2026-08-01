@@ -381,12 +381,13 @@ export function DailyEntryDialog({
           </div>
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="sticky bottom-0 -mx-6 -mb-6 gap-2 border-t border-border/60 bg-background/95 px-6 py-3 backdrop-blur">
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button onClick={handleSave}>Save day</Button>
+          <Button className="min-w-32" onClick={handleSave}>Save day</Button>
         </DialogFooter>
+
       </DialogContent>
     </Dialog>
   );
