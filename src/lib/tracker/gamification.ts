@@ -297,20 +297,27 @@ export function computeGamification(
   let tripleTargetDays = 0;
   let bigDay500 = false;
   let bigDay1000 = false;
+  let bigDayEarnings1000 = false;
   let bestNetDay = 0;
+  let bestEarningsDay = 0;
   for (const e of entries) {
     const tn = entryTargetNetUsing(e, deductions);
     if (tn >= target && target > 0) hitTargetDays++;
     if (tn >= target * 2 && target > 0) doubleTargetDays++;
     if (tn >= target * 3 && target > 0) tripleTargetDays++;
     const n = entryNet(e, catMap);
+    const earn = Number(e.earnings) || 0;
     if (n > bestNetDay) bestNetDay = n;
+    if (earn > bestEarningsDay) bestEarningsDay = earn;
     if (n >= 500) bigDay500 = true;
     if (n >= 1000) bigDay1000 = true;
+    if (earn >= 1000) bigDayEarnings1000 = true;
   }
 
   // Perfect week: any 7 consecutive logged dates where each hits target
   let perfectWeek = false;
+  // Perfect 2 weeks: any 14 consecutive logged dates hitting target
+  let perfectTwoWeeks = false;
   const sortedEntries = [...entries].sort((a, b) => (a.date < b.date ? -1 : 1));
   for (let i = 0; i + 6 < sortedEntries.length; i++) {
     const window = sortedEntries.slice(i, i + 7);
@@ -328,9 +335,48 @@ export function computeGamification(
     );
     if (allHit) {
       perfectWeek = true;
+      // Try extending to 14
+      if (i + 13 < sortedEntries.length) {
+        const window14 = sortedEntries.slice(i, i + 14);
+        const consecutive14 = window14.every((e, idx) => {
+          if (idx === 0) return true;
+          const diff = Math.round(
+            (parseDate(e.date).getTime() - parseDate(window14[idx - 1].date).getTime()) /
+              86_400_000,
+          );
+          return diff === 1;
+        });
+        if (consecutive14 && window14.every((e) => entryTargetNetUsing(e, deductions) >= target && target > 0)) {
+          perfectTwoWeeks = true;
+        }
+      }
       break;
     }
   }
+
+  // Consecutive target-hits (any streak of hits, not just 7)
+  let bestHitStreak = 0;
+  let currentHitStreak = 0;
+  let prevHitDate: string | null = null;
+  for (const e of sortedEntries) {
+    const hit = entryTargetNetUsing(e, deductions) >= target && target > 0;
+    if (!hit) {
+      currentHitStreak = 0;
+      prevHitDate = null;
+      continue;
+    }
+    if (prevHitDate && daysBetween(prevHitDate, e.date) === 1) {
+      currentHitStreak++;
+    } else {
+      currentHitStreak = 1;
+    }
+    if (currentHitStreak > bestHitStreak) bestHitStreak = currentHitStreak;
+    prevHitDate = e.date;
+  }
+
+  // Total days at 2x or 3x (cumulative, not consecutive)
+  const totalDoubleDays = doubleTargetDays;
+  const totalTripleDays = tripleTargetDays;
 
   // Lean spending day (expenses < 20% of earnings) count
   let leanDays = 0;
