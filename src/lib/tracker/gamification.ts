@@ -1,6 +1,7 @@
 import type { Category, DailyEntry, TrackerSettings } from "./types";
 import {
   computeEntryTargetDeductions,
+  daysBetween,
   entryNet,
   entryTargetNetUsing,
   entryTotalExpenses,
