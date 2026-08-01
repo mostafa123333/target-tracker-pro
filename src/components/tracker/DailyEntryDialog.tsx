@@ -173,11 +173,39 @@ export function DailyEntryDialog({
                 type="number"
                 inputMode="decimal"
                 placeholder="0"
+                autoFocus
+                className="h-11 text-lg"
                 value={earnings}
                 onChange={(e) => setEarnings(e.target.value)}
               />
             </div>
           </div>
+
+          {/* Quick earnings chips — one tap instead of typing */}
+          <div className="flex flex-wrap gap-1.5">
+            {[100, 220, 300, 500].map((amt) => (
+              <button
+                key={amt}
+                type="button"
+                onClick={() =>
+                  setEarnings(String((Number(earnings) || 0) + amt))
+                }
+                className="rounded-full border border-border/60 bg-muted/40 px-3 py-1 text-xs font-medium transition-colors hover:border-primary/40 hover:bg-primary/10"
+              >
+                +{amt}
+              </button>
+            ))}
+            {earnings !== "" && (
+              <button
+                type="button"
+                onClick={() => setEarnings("")}
+                className="rounded-full border border-border/60 px-3 py-1 text-xs text-muted-foreground"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+
 
           {(() => {
             const conflict = entries.find((e) => e.date === date && e.id !== (initial?.id ?? "draft"));
@@ -353,12 +381,13 @@ export function DailyEntryDialog({
           </div>
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="sticky bottom-0 -mx-6 -mb-6 gap-2 border-t border-border/60 bg-background/95 px-6 py-3 backdrop-blur">
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button onClick={handleSave}>Save day</Button>
+          <Button className="min-w-32" onClick={handleSave}>Save day</Button>
         </DialogFooter>
+
       </DialogContent>
     </Dialog>
   );

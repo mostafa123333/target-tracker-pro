@@ -53,8 +53,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <main className="mx-auto max-w-6xl px-4 py-6 md:py-10">{children}</main>
 
       {/* Mobile bottom nav */}
-      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border/60 bg-background/85 backdrop-blur-xl md:hidden">
+      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border/60 bg-background/85 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl md:hidden">
         <div className="mx-auto flex max-w-6xl items-stretch justify-around px-2 py-1.5">
+
           {NAV.map((item) => {
             const active = pathname === item.to;
             const Icon = item.icon;
