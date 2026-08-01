@@ -26,6 +26,7 @@ import { MotivationCard } from "@/components/tracker/MotivationCard";
 import { EarningsLine, ExpectedVsActual } from "@/components/tracker/Charts";
 import { GamificationPanel } from "@/components/tracker/Gamification";
 import { WeeklyReview } from "@/components/tracker/WeeklyReview";
+import { computeGamification } from "@/lib/tracker/gamification";
 import { computeAnalytics, computeEntryTargetDeductions, entryNet, entryTargetNetUsing, entryTotalExpenses, formatEGP, todayISO } from "@/lib/tracker/analytics";
 import type { DailyEntry } from "@/lib/tracker/types";
 import { cn } from "@/lib/utils";
