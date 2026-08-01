@@ -58,9 +58,12 @@ function Dashboard() {
   const [editing, setEditing] = useState<DailyEntry | null>(null);
   const [showAllStats, setShowAllStats] = useState(false);
 
-
   const analytics = useMemo(
     () => (settings ? computeAnalytics(entries, settings, categories) : null),
+    [entries, settings, categories],
+  );
+  const gamification = useMemo(
+    () => (settings ? computeGamification(entries, settings, categories) : null),
     [entries, settings, categories],
   );
   const catMap = useMemo(() => {
@@ -68,6 +71,43 @@ function Dashboard() {
     for (const c of categories) m.set(c.name, c);
     return m;
   }, [categories]);
+
+  // Celebration: new achievements and today's target hit
+  const prevUnlockedIds = useRef<Set<string>>(new Set());
+  const prevTodayHit = useRef(false);
+
+  useEffect(() => {
+    if (!gamification || !analytics) return;
+    const currentUnlocked = new Set(
+      gamification.achievements.filter((a) => a.unlocked).map((a) => a.id),
+    );
+    const newlyUnlocked = [...currentUnlocked].filter(
+      (id) => !prevUnlockedIds.current.has(id),
+    );
+    if (newlyUnlocked.length > 0) {
+      const ach = gamification.achievements.find((a) => a.id === newlyUnlocked[0]);
+      if (ach) {
+        toast.success(`🎉 إنجاز جديد: ${ach.title}`, {
+          description: ach.desc,
+          duration: 6000,
+        });
+      }
+    }
+    prevUnlockedIds.current = currentUnlocked;
+
+    // Today's target hit
+    const deductionsMap = computeEntryTargetDeductions(entries, catMap);
+    const todayHit =
+      analytics.todaysEntry &&
+      entryTargetNetUsing(analytics.todaysEntry, deductionsMap) >= settings.dailyTarget;
+    if (todayHit && !prevTodayHit.current) {
+      toast.success("🎯 هدف اليوم تحقق!", {
+        description: "شاطر — كمّل بكرة على نفس الإيقاع.",
+        duration: 5000,
+      });
+    }
+    prevTodayHit.current = todayHit;
+  }, [gamification, analytics, entries, catMap, settings.dailyTarget]);
 
   const openAddToday = () => {
     setEditing(analytics?.todaysEntry ?? null);
