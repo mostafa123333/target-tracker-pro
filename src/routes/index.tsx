@@ -176,6 +176,18 @@ function Dashboard() {
         </div>
       </section>
 
+      {/* Motivation card — today's focus */}
+      <MotivationCard
+        settings={settings}
+        todaysEntry={a.todaysEntry}
+        currentStreak={a.currentStreak}
+        targetProgress={a.targetProgress}
+        expectedAmount={a.expectedAmount}
+        difference={a.difference}
+        daysRemaining={a.daysRemaining}
+        onAddToday={openAddToday}
+      />
+
       {/* Primary stats — always visible */}
       <section className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <StatCard label="Net profit" value={formatEGP(a.netProfit)} icon={Wallet} tone="primary" />
