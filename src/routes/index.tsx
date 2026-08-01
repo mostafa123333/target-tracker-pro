@@ -22,6 +22,7 @@ import { useTracker } from "@/hooks/useTracker";
 import { OnboardingDialog } from "@/components/tracker/OnboardingDialog";
 import { DailyEntryDialog } from "@/components/tracker/DailyEntryDialog";
 import { StatCard } from "@/components/tracker/StatCard";
+import { MotivationCard } from "@/components/tracker/MotivationCard";
 import { EarningsLine, ExpectedVsActual } from "@/components/tracker/Charts";
 import { GamificationPanel } from "@/components/tracker/Gamification";
 import { WeeklyReview } from "@/components/tracker/WeeklyReview";
