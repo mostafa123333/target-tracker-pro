@@ -95,10 +95,22 @@ export function computeEntryTargetDeductions(
   return out;
 }
 
+/** Format a Date as YYYY-MM-DD using the user's LOCAL calendar day. */
+export function toISODate(d: Date): string {
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+/** Local start-of-day for an ISO date string. */
+export function parseISODate(iso: string): Date {
+  return new Date(iso + "T00:00:00");
+}
+
+/** Today's date in the user's local timezone (never UTC-shifted). */
 export function todayISO(): string {
-  const d = new Date();
-  d.setHours(0, 0, 0, 0);
-  return d.toISOString().slice(0, 10);
+  return toISODate(new Date());
 }
 
 export function daysBetween(startISO: string, endISO: string): number {
@@ -198,7 +210,7 @@ function computeStreaks(entries: DailyEntry[]): { current: number; best: number 
   if (!dates.has(cursor)) {
     const y = new Date(today + "T00:00:00");
     y.setDate(y.getDate() - 1);
-    cursor = y.toISOString().slice(0, 10);
+    cursor = toISODate(y);
     if (!dates.has(cursor)) return { current: 0, best };
   }
   let current = 0;
@@ -206,7 +218,7 @@ function computeStreaks(entries: DailyEntry[]): { current: number; best: number 
     current++;
     const d = new Date(cursor + "T00:00:00");
     d.setDate(d.getDate() - 1);
-    cursor = d.toISOString().slice(0, 10);
+    cursor = toISODate(d);
   }
   return { current, best };
 }
@@ -230,7 +242,7 @@ export function computeAnalytics(
 
   const endDateObj = new Date(settings.startDate + "T00:00:00");
   endDateObj.setDate(endDateObj.getDate() + totalDays - 1);
-  const endDate = endDateObj.toISOString().slice(0, 10);
+  const endDate = toISODate(endDateObj);
   const isCompleted = daysElapsed >= totalDays;
 
   const totalEarnings = entries.reduce((s, e) => s + (Number(e.earnings) || 0), 0);

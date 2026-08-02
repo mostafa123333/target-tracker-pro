@@ -6,6 +6,7 @@ import {
   entryTotalExpenses,
   makeCategoryMap,
   todayISO,
+  toISODate,
 } from "./analytics";
 
 export type WeekSummary = {
@@ -33,13 +34,13 @@ function startOfWeekSat(iso: string): string {
   // 6 = Saturday in JS. Compute days back to Saturday.
   const back = (d.getDay() + 1) % 7; // Sat->0, Sun->1, ... Fri->6
   d.setDate(d.getDate() - back);
-  return d.toISOString().slice(0, 10);
+  return toISODate(d);
 }
 
 function addDays(iso: string, n: number): string {
   const d = new Date(iso + "T00:00:00");
   d.setDate(d.getDate() + n);
-  return d.toISOString().slice(0, 10);
+  return toISODate(d);
 }
 
 function summarize(
