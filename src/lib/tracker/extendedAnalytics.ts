@@ -5,6 +5,7 @@ import {
   entryTargetNetUsing,
   entryTotalExpenses,
   makeCategoryMap,
+  todayISO,
 } from "./analytics";
 
 export type TopDay = { date: string; net: number; earnings: number };
@@ -285,7 +286,7 @@ export function computeExtendedAnalytics(
   // not on how many days the user has logged. Missed days must count against
   // the forecast, otherwise the projection stays flat no matter what.
   const startMs = settings.startDate ? parseDate(settings.startDate).getTime() : NaN;
-  const todayMs = parseDate(new Date().toISOString().slice(0, 10)).getTime();
+  const todayMs = parseDate(todayISO()).getTime();
   const daysElapsed = Number.isFinite(startMs)
     ? Math.min(totalDays, Math.max(0, Math.floor((todayMs - startMs) / 86400000) + 1))
     : sorted.length;
