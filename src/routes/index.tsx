@@ -27,9 +27,15 @@ import { EarningsLine, ExpectedVsActual } from "@/components/tracker/Charts";
 import { GamificationPanel } from "@/components/tracker/Gamification";
 import { WeeklyReview } from "@/components/tracker/WeeklyReview";
 import { computeGamification } from "@/lib/tracker/gamification";
-import { computeAnalytics, computeEntryTargetDeductions, entryNet, entryTargetNetUsing, entryTotalExpenses, formatEGP, todayISO } from "@/lib/tracker/analytics";
+import { computeAnalytics, computeEntryTargetDeductions, entryNet, entryTargetNetUsing, entryTotalExpenses, formatEGP } from "@/lib/tracker/analytics";
 import type { DailyEntry } from "@/lib/tracker/types";
 import { cn } from "@/lib/utils";
+import {
+  readSeenAchievements,
+  writeSeenAchievements,
+  readSeenTargetDay,
+  writeSeenTargetDay,
+} from "@/lib/tracker/notifications";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -47,6 +53,7 @@ export const Route = createFileRoute("/")({
 function Dashboard() {
   const {
     hydrated,
+    today,
     settings,
     entries,
     categories,
@@ -60,11 +67,12 @@ function Dashboard() {
 
   const analytics = useMemo(
     () => (settings ? computeAnalytics(entries, settings, categories) : null),
-    [entries, settings, categories],
+    // `today` is a dependency so the dashboard re-derives at local midnight.
+    [entries, settings, categories, today],
   );
   const gamification = useMemo(
     () => (settings ? computeGamification(entries, settings, categories) : null),
-    [entries, settings, categories],
+    [entries, settings, categories, today],
   );
   const catMap = useMemo(() => {
     const m = new Map<string, typeof categories[number]>();
@@ -72,42 +80,49 @@ function Dashboard() {
     return m;
   }, [categories]);
 
-  // Celebration: new achievements and today's target hit
-  const prevUnlockedIds = useRef<Set<string>>(new Set());
-  const prevTodayHit = useRef(false);
+  // Celebration: fire each notification ONCE, ever. Seen state is persisted so
+  // reopening the site (a minute or a day later) never replays old toasts.
+  const notifyReady = useRef(false);
+  const seenAchievements = useRef<Set<string>>(new Set());
+  const seenTargetDay = useRef<string | null>(null);
 
   useEffect(() => {
+    seenAchievements.current = new Set(readSeenAchievements());
+    seenTargetDay.current = readSeenTargetDay();
+    notifyReady.current = true;
+  }, []);
+
+  useEffect(() => {
+    if (!notifyReady.current) return;
     if (!settings || !gamification || !analytics) return;
-    const currentUnlocked = new Set(
-      gamification.achievements.filter((a) => a.unlocked).map((a) => a.id),
-    );
-    const newlyUnlocked = [...currentUnlocked].filter(
-      (id) => !prevUnlockedIds.current.has(id),
+
+    const newlyUnlocked = gamification.achievements.filter(
+      (a) => a.unlocked && !seenAchievements.current.has(a.id),
     );
     if (newlyUnlocked.length > 0) {
-      const ach = gamification.achievements.find((a) => a.id === newlyUnlocked[0]);
-      if (ach) {
-        toast.success(`🎉 إنجاز جديد: ${ach.title}`, {
-          description: ach.desc,
-          duration: 6000,
-        });
-      }
+      const ach = newlyUnlocked[0];
+      toast.success(`🎉 إنجاز جديد: ${ach.title}`, {
+        description: ach.desc,
+        duration: 6000,
+      });
+      for (const a of newlyUnlocked) seenAchievements.current.add(a.id);
+      writeSeenAchievements([...seenAchievements.current]);
     }
-    prevUnlockedIds.current = currentUnlocked;
 
-    // Today's target hit
+    // Today's target hit — once per calendar day (local time).
     const deductionsMap = computeEntryTargetDeductions(entries, catMap);
     const todayHit =
       analytics.todaysEntry !== undefined &&
       entryTargetNetUsing(analytics.todaysEntry, deductionsMap) >= settings.dailyTarget;
-    if (todayHit && !prevTodayHit.current) {
+    if (todayHit && seenTargetDay.current !== today) {
       toast.success("🎯 هدف اليوم تحقق!", {
         description: "شاطر — كمّل بكرة على نفس الإيقاع.",
         duration: 5000,
       });
+      seenTargetDay.current = today;
+      writeSeenTargetDay(today);
     }
-    prevTodayHit.current = todayHit;
-  }, [gamification, analytics, entries, catMap, settings]);
+  }, [gamification, analytics, entries, catMap, settings, today]);
 
   const openAddToday = () => {
     setEditing(analytics?.todaysEntry ?? null);
@@ -483,7 +498,7 @@ function Dashboard() {
               const targetNet = entryTargetNetUsing(e, deductionsMap);
               const exp = entryTotalExpenses(e);
               const hit = targetNet >= settings.dailyTarget;
-              const isToday = e.date === todayISO();
+              const isToday = e.date === today;
               return (
                 <li key={e.id}>
                   <button
