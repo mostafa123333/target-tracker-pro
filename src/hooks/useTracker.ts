@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import type { Category, DailyEntry, TrackerSettings } from "@/lib/tracker/types";
+import { todayISO } from "@/lib/tracker/analytics";
 import {
   loadAll,
   saveCategories,
@@ -15,6 +16,9 @@ export function useTracker() {
   const [entries, setEntries] = useState<DailyEntry[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [hydrated, setHydrated] = useState(false);
+  // Local calendar day. Kept in state so the whole UI re-derives "today"
+  // when the clock crosses local midnight while the tab stays open.
+  const [today, setToday] = useState<string>(() => todayISO());
 
   useEffect(() => {
     const refresh = () => {
@@ -22,6 +26,7 @@ export function useTracker() {
       setSettings(d.settings);
       setEntries(d.entries);
       setCategories(d.categories);
+      setToday(todayISO());
       setHydrated(true);
     };
     refresh();
@@ -32,7 +37,14 @@ export function useTracker() {
     window.addEventListener("pageshow", refresh);
     window.addEventListener("storage", refresh);
     document.addEventListener("visibilitychange", onVisible);
+    const tick = window.setInterval(() => {
+      setToday((prev) => {
+        const now = todayISO();
+        return now === prev ? prev : now;
+      });
+    }, 30_000);
     return () => {
+      window.clearInterval(tick);
       window.removeEventListener("focus", refresh);
       window.removeEventListener("pageshow", refresh);
       window.removeEventListener("storage", refresh);
@@ -129,6 +141,7 @@ export function useTracker() {
 
   return {
     hydrated,
+    today,
     settings,
     entries,
     categories,
