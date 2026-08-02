@@ -9,7 +9,10 @@ import { relative, resolve, sep } from "node:path";
 
 // BASE_PATH lets the same build work in Lovable preview ("/") and on
 // GitHub Pages project sites ("/<repo>/"). The Pages workflow sets it.
-const basePath = process.env.BASE_PATH || "/";
+// Default to the GitHub Pages project path so a plain `bun run build`
+// already produces a Pages-ready bundle; BASE_PATH can override it.
+const basePath =
+  process.env.BASE_PATH || (process.env.NODE_ENV === "production" ? "/target-tracker-pro/" : "/");
 
 /**
  * Why this shim exists (the "Cannot find module dist/server/server.js" /
