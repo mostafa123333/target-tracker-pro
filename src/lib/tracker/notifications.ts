@@ -54,3 +54,8 @@ export function readSeenTargetDay(): string | null {
 export function writeSeenTargetDay(iso: string) {
   write(TARGET_DAY_KEY, iso);
 }
+
+/** True once we've stored notification state at least once on this device. */
+export function hasNotificationRecord(): boolean {
+  return read(ACH_KEY) !== null || read(TARGET_DAY_KEY) !== null;
+}

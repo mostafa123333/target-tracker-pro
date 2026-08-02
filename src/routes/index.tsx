@@ -35,6 +35,7 @@ import {
   writeSeenAchievements,
   readSeenTargetDay,
   writeSeenTargetDay,
+  hasNotificationRecord,
 } from "@/lib/tracker/notifications";
 
 export const Route = createFileRoute("/")({
@@ -85,10 +86,12 @@ function Dashboard() {
   const notifyReady = useRef(false);
   const seenAchievements = useRef<Set<string>>(new Set());
   const seenTargetDay = useRef<string | null>(null);
+  const firstRun = useRef(false);
 
   useEffect(() => {
     seenAchievements.current = new Set(readSeenAchievements());
     seenTargetDay.current = readSeenTargetDay();
+    firstRun.current = !hasNotificationRecord();
     notifyReady.current = true;
   }, []);
 
@@ -96,8 +99,21 @@ function Dashboard() {
     if (!notifyReady.current) return;
     if (!settings || !gamification || !analytics) return;
 
-    const newlyUnlocked = gamification.achievements.filter(
-      (a) => a.unlocked && !seenAchievements.current.has(a.id),
+    const unlockedNow = gamification.achievements.filter((a) => a.unlocked);
+
+    // First run on this device: adopt the current state silently so we never
+    // replay achievements the user already earned before this feature existed.
+    if (firstRun.current) {
+      firstRun.current = false;
+      for (const a of unlockedNow) seenAchievements.current.add(a.id);
+      writeSeenAchievements([...seenAchievements.current]);
+      seenTargetDay.current = today;
+      writeSeenTargetDay(today);
+      return;
+    }
+
+    const newlyUnlocked = unlockedNow.filter(
+      (a) => !seenAchievements.current.has(a.id),
     );
     if (newlyUnlocked.length > 0) {
       const ach = newlyUnlocked[0];
