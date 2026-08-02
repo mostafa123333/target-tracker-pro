@@ -9,6 +9,8 @@ import { relative, resolve, sep } from "node:path";
 
 // BASE_PATH lets the same build work in Lovable preview ("/") and on
 // GitHub Pages project sites ("/<repo>/"). The Pages workflow sets it.
+// GitHub Pages needs "/target-tracker-pro/"; Lovable/Netlify need "/".
+// The Pages workflow sets BASE_PATH, everything else stays at root.
 const basePath = process.env.BASE_PATH || "/";
 
 /**
